@@ -1,0 +1,343 @@
+# French translation of ShellMan.
+# Copyright (C) 2026 Sylvain Cresto
+# This file is distributed under the same license as the shellman package.
+msgid ""
+msgstr ""
+"Project-Id-Version: shellman\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-12 01:03+0100\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: Sylvain Cresto\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: config.rs:8
+msgid "Show or Hide the Terminal"
+msgstr "Afficher / masquer le terminal"
+
+#: config.rs:9 i18n.rs:40 i18n.rs:43 pane.rs:398
+msgid "Copy"
+msgstr "Copier"
+
+#: config.rs:10 pane.rs:399
+msgid "Paste"
+msgstr "Coller"
+
+#: config.rs:11
+msgid "Insert Selected Files"
+msgstr "Insérer les fichiers sélectionnés"
+
+#: config.rs:12 pane.rs:410
+msgid "Split Right"
+msgstr "Diviser à droite"
+
+#: config.rs:13 pane.rs:411
+msgid "Split Down"
+msgstr "Diviser en dessous"
+
+#: config.rs:14
+msgid "Split Automatically"
+msgstr "Répartir automatiquement"
+
+#: config.rs:15 pane.rs:412
+msgid "Close Terminal"
+msgstr "Fermer le terminal"
+
+#: config.rs:16 pane.rs:407
+msgid "Go to Tab Folder"
+msgstr "Aller au dossier de l'onglet"
+
+#: config.rs:17
+msgid "Go to Left Terminal"
+msgstr "Aller au terminal de gauche"
+
+#: config.rs:18
+msgid "Go to Right Terminal"
+msgstr "Aller au terminal de droite"
+
+#: config.rs:19
+msgid "Go to Terminal Above"
+msgstr "Aller au terminal du dessus"
+
+#: config.rs:20
+msgid "Go to Terminal Below"
+msgstr "Aller au terminal du dessous"
+
+#: i18n.rs:44 i18n.rs:46 pane.rs:402
+msgid "Insert the Selected File"
+msgid_plural "Insert the {n} Selected Files"
+msgstr[0] "Insérer le fichier sélectionné"
+msgstr[1] "Insérer les {n} fichiers sélectionnés"
+
+#: lib.rs:35
+msgid "Embedded Terminal"
+msgstr "Terminal intégré"
+
+#: lib.rs:36
+msgid "Show or hide the terminal at the bottom of the window"
+msgstr "Afficher / masquer le terminal en bas de la fenêtre"
+
+#: pane.rs:400
+msgid "Select All"
+msgstr "Tout sélectionner"
+
+#: pane.rs:405
+msgid "Insert the {var} Variable"
+msgstr "Insérer la variable {var}"
+
+#: pane.rs:408 prefs.rs:175
+msgid "Follow Nautilus Folder"
+msgstr "Suivre le dossier de Nautilus"
+
+#: pane.rs:414 panel.rs:603
+msgid "Preferences…"
+msgstr "Paramètres…"
+
+#: panel.rs:254
+msgid "Hide the terminal"
+msgstr "Masquer le terminal"
+
+#: panel.rs:254
+msgid "Open a terminal here"
+msgstr "Ouvrir un terminal ici"
+
+#: panel.rs:600 prefs.rs:173
+msgid "Terminal"
+msgstr "Terminal"
+
+#: panel.rs:604
+msgid "About ShellMan"
+msgstr "À propos de ShellMan"
+
+#: panel.rs:608
+msgid "Preferences, About"
+msgstr "Paramètres, à propos"
+
+#: prefs.rs:37
+msgid " or "
+msgstr " ou "
+
+#: prefs.rs:37
+msgid "Disabled"
+msgstr "Désactivé"
+
+#: prefs.rs:50
+msgid "New Shortcut"
+msgstr "Nouveau raccourci"
+
+#: prefs.rs:51
+msgid ""
+"Press the key combination for “{action}”.\n"
+"\n"
+"Escape: cancel · Backspace: disable"
+msgstr ""
+"Appuyez sur la combinaison pour « {action} ».\n"
+"\n"
+"Échap : annuler · Retour arrière : désactiver"
+
+#: prefs.rs:52
+msgid "Cancel"
+msgstr "Annuler"
+
+#: prefs.rs:73
+msgid ""
+"Use Ctrl, Alt or Super with the key, or a function key (F1…F12).\n"
+"\n"
+"Escape: cancel · Backspace: disable"
+msgstr ""
+"Utilisez Ctrl, Alt ou Super avec la touche, ou une touche de fonction (F1…"
+"F12).\n"
+"\n"
+"Échap : annuler · Retour arrière : désactiver"
+
+#: prefs.rs:91
+msgid "Colors"
+msgstr "Couleurs"
+
+#: prefs.rs:95
+msgid "Style"
+msgstr "Style"
+
+#: prefs.rs:96
+msgid "Dark"
+msgstr "Sombre"
+
+#: prefs.rs:96
+msgid "Follow System"
+msgstr "Suivre le système"
+
+#: prefs.rs:96
+msgid "Light"
+msgstr "Clair"
+
+#: prefs.rs:106
+msgid "Same as My Terminal"
+msgstr "Comme mon terminal"
+
+#: prefs.rs:106
+msgid "Same as Nautilus"
+msgstr "Comme Nautilus"
+
+#: prefs.rs:112
+msgid "Custom"
+msgstr "Personnalisées"
+
+#: prefs.rs:115
+msgid "Palette"
+msgstr "Palette"
+
+#: prefs.rs:120
+msgid "Colors of {terminal}"
+msgstr "Couleurs de {terminal}"
+
+#: prefs.rs:121
+msgid "Neither Ptyxis nor GNOME Terminal found: Nautilus colors"
+msgstr ""
+"Ni Ptyxis ni GNOME Terminal n'ont été détectés : utilisation des couleurs de "
+"Nautilus"
+
+#: prefs.rs:125
+msgid "The background of the file view"
+msgstr "Arrière-plan de la vue des fichiers"
+
+#: prefs.rs:133
+msgid "Text, Light Style"
+msgstr "Texte, style clair"
+
+#: prefs.rs:134
+msgid "Background, Light Style"
+msgstr "Fond, style clair"
+
+#: prefs.rs:135
+msgid "Text, Dark Style"
+msgstr "Texte, style sombre"
+
+#: prefs.rs:136
+msgid "Background, Dark Style"
+msgstr "Fond, style sombre"
+
+#: prefs.rs:170
+msgid "Terminal Preferences"
+msgstr "Paramètres du terminal"
+
+#: prefs.rs:176
+msgid ""
+"The shell changes folder along with the window, when no command is running"
+msgstr ""
+"Le shell change de dossier en même temps que la fenêtre, lorsqu'aucune "
+"commande n'est en cours d'exécution"
+
+#: prefs.rs:186
+msgid "One Terminal per Tab"
+msgstr "Un terminal par onglet"
+
+#: prefs.rs:187
+msgid ""
+"When off, one terminal per window follows the active tab. Applies to new "
+"windows."
+msgstr ""
+"Si cette option est désactivée, un seul terminal est utilisé par fenêtre et "
+"suit l'onglet actif. S'applique aux nouvelles fenêtres."
+
+#: prefs.rs:197
+msgid "Show the Terminal in New Tabs"
+msgstr "Afficher le terminal dans les nouveaux onglets"
+
+#: prefs.rs:198
+msgid ""
+"With one terminal per tab, showing or hiding the terminal only affects the "
+"current tab"
+msgstr ""
+"Avec un terminal par onglet, afficher ou masquer le terminal n'agit que sur "
+"l'onglet courant"
+
+#: prefs.rs:208
+msgid "Height When Opened"
+msgstr "Hauteur à l'ouverture"
+
+#: prefs.rs:209
+msgid "In lines; also the minimum height of a terminal"
+msgstr "En lignes ; c'est aussi la hauteur minimale d'un terminal"
+
+#: prefs.rs:218
+msgid "Scrollback Lines"
+msgstr "Nombre de lignes d'historique"
+
+#: prefs.rs:227 prefs.rs:236
+msgid "Font"
+msgstr "Police"
+
+#: prefs.rs:229
+msgid "Use System Monospace Font"
+msgstr "Utiliser la police à chasse fixe du système"
+
+#: prefs.rs:260
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+#: prefs.rs:261
+msgid "Click an action, then press the new key combination"
+msgstr "Cliquez sur une action puis appuyez sur la nouvelle combinaison"
+
+#: prefs.rs:285
+msgid "Reset"
+msgstr "Réinitialiser"
+
+#: prefs.rs:288
+msgid "Restore all default shortcuts"
+msgstr "Rétablir tous les raccourcis par défaut"
+
+#: prefs.rs:311
+msgid ""
+"An embedded terminal at the bottom of Nautilus (GNOME Files) windows. It "
+"follows the displayed folder, and the files selected in Nautilus are "
+"available in the SEL variable."
+msgstr ""
+"Un terminal intégré en bas des fenêtres de Fichiers (GNOME). Il suit le "
+"dossier affiché et les fichiers sélectionnés dans Nautilus sont accessibles "
+"via la variable SEL."
+
+#: prefs.rs:313
+msgid "Built with"
+msgstr "Basé sur"
+
+#: prefs.rs:313
+msgid "VTE (GNOME terminal widget)"
+msgstr "VTE (terminal GNOME)"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:6
+msgid "Embedded terminal at the bottom of the window"
+msgstr "Terminal intégré en bas de la fenêtre"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:13
+msgid ""
+"ShellMan adds a real terminal at the bottom of Files windows. Press F4 to "
+"show it, give it the keyboard or hide it."
+msgstr ""
+"ShellMan ajoute un véritable terminal en bas des fenêtres de Fichiers. "
+"Appuyez sur F4 pour l'afficher, lui donner le focus ou le masquer."
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:18
+msgid "The shell follows the folder displayed in the window"
+msgstr "Le shell suit le dossier affiché dans la fenêtre"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:19
+msgid "The selected files are available in the SEL variable"
+msgstr "Les fichiers sélectionnés sont dans la variable SEL"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:20
+msgid "One terminal per tab, which can be split"
+msgstr "Un terminal par onglet, qui peut être divisé"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:21
+msgid "Colors of your usual terminal, keyboard shortcuts that can be changed"
+msgstr ""
+"Les couleurs de votre terminal habituel, des raccourcis clavier modifiables"
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:27
+msgid "Two terminals side by side under the files"
+msgstr "Deux terminaux côte à côte sous les fichiers"

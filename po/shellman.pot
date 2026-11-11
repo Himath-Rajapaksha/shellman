@@ -1,0 +1,325 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-12 01:03+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: config.rs:8
+msgid "Show or Hide the Terminal"
+msgstr ""
+
+#: config.rs:9 i18n.rs:40 i18n.rs:43 pane.rs:398
+msgid "Copy"
+msgstr ""
+
+#: config.rs:10 pane.rs:399
+msgid "Paste"
+msgstr ""
+
+#: config.rs:11
+msgid "Insert Selected Files"
+msgstr ""
+
+#: config.rs:12 pane.rs:410
+msgid "Split Right"
+msgstr ""
+
+#: config.rs:13 pane.rs:411
+msgid "Split Down"
+msgstr ""
+
+#: config.rs:14
+msgid "Split Automatically"
+msgstr ""
+
+#: config.rs:15 pane.rs:412
+msgid "Close Terminal"
+msgstr ""
+
+#: config.rs:16 pane.rs:407
+msgid "Go to Tab Folder"
+msgstr ""
+
+#: config.rs:17
+msgid "Go to Left Terminal"
+msgstr ""
+
+#: config.rs:18
+msgid "Go to Right Terminal"
+msgstr ""
+
+#: config.rs:19
+msgid "Go to Terminal Above"
+msgstr ""
+
+#: config.rs:20
+msgid "Go to Terminal Below"
+msgstr ""
+
+#: i18n.rs:44 i18n.rs:46 pane.rs:402
+msgid "Insert the Selected File"
+msgid_plural "Insert the {n} Selected Files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib.rs:35
+msgid "Embedded Terminal"
+msgstr ""
+
+#: lib.rs:36
+msgid "Show or hide the terminal at the bottom of the window"
+msgstr ""
+
+#: pane.rs:400
+msgid "Select All"
+msgstr ""
+
+#: pane.rs:405
+msgid "Insert the {var} Variable"
+msgstr ""
+
+#: pane.rs:408 prefs.rs:175
+msgid "Follow Nautilus Folder"
+msgstr ""
+
+#: pane.rs:414 panel.rs:603
+msgid "Preferences…"
+msgstr ""
+
+#: panel.rs:254
+msgid "Hide the terminal"
+msgstr ""
+
+#: panel.rs:254
+msgid "Open a terminal here"
+msgstr ""
+
+#: panel.rs:600 prefs.rs:173
+msgid "Terminal"
+msgstr ""
+
+#: panel.rs:604
+msgid "About ShellMan"
+msgstr ""
+
+#: panel.rs:608
+msgid "Preferences, About"
+msgstr ""
+
+#: prefs.rs:37
+msgid " or "
+msgstr ""
+
+#: prefs.rs:37
+msgid "Disabled"
+msgstr ""
+
+#: prefs.rs:50
+msgid "New Shortcut"
+msgstr ""
+
+#: prefs.rs:51
+msgid ""
+"Press the key combination for “{action}”.\n"
+"\n"
+"Escape: cancel · Backspace: disable"
+msgstr ""
+
+#: prefs.rs:52
+msgid "Cancel"
+msgstr ""
+
+#: prefs.rs:73
+msgid ""
+"Use Ctrl, Alt or Super with the key, or a function key (F1…F12).\n"
+"\n"
+"Escape: cancel · Backspace: disable"
+msgstr ""
+
+#: prefs.rs:91
+msgid "Colors"
+msgstr ""
+
+#: prefs.rs:95
+msgid "Style"
+msgstr ""
+
+#: prefs.rs:96
+msgid "Dark"
+msgstr ""
+
+#: prefs.rs:96
+msgid "Follow System"
+msgstr ""
+
+#: prefs.rs:96
+msgid "Light"
+msgstr ""
+
+#: prefs.rs:106
+msgid "Same as My Terminal"
+msgstr ""
+
+#: prefs.rs:106
+msgid "Same as Nautilus"
+msgstr ""
+
+#: prefs.rs:112
+msgid "Custom"
+msgstr ""
+
+#: prefs.rs:115
+msgid "Palette"
+msgstr ""
+
+#: prefs.rs:120
+msgid "Colors of {terminal}"
+msgstr ""
+
+#: prefs.rs:121
+msgid "Neither Ptyxis nor GNOME Terminal found: Nautilus colors"
+msgstr ""
+
+#: prefs.rs:125
+msgid "The background of the file view"
+msgstr ""
+
+#: prefs.rs:133
+msgid "Text, Light Style"
+msgstr ""
+
+#: prefs.rs:134
+msgid "Background, Light Style"
+msgstr ""
+
+#: prefs.rs:135
+msgid "Text, Dark Style"
+msgstr ""
+
+#: prefs.rs:136
+msgid "Background, Dark Style"
+msgstr ""
+
+#: prefs.rs:170
+msgid "Terminal Preferences"
+msgstr ""
+
+#: prefs.rs:176
+msgid ""
+"The shell changes folder along with the window, when no command is running"
+msgstr ""
+
+#: prefs.rs:186
+msgid "One Terminal per Tab"
+msgstr ""
+
+#: prefs.rs:187
+msgid ""
+"When off, one terminal per window follows the active tab. Applies to new "
+"windows."
+msgstr ""
+
+#: prefs.rs:197
+msgid "Show the Terminal in New Tabs"
+msgstr ""
+
+#: prefs.rs:198
+msgid ""
+"With one terminal per tab, showing or hiding the terminal only affects the "
+"current tab"
+msgstr ""
+
+#: prefs.rs:208
+msgid "Height When Opened"
+msgstr ""
+
+#: prefs.rs:209
+msgid "In lines; also the minimum height of a terminal"
+msgstr ""
+
+#: prefs.rs:218
+msgid "Scrollback Lines"
+msgstr ""
+
+#: prefs.rs:227 prefs.rs:236
+msgid "Font"
+msgstr ""
+
+#: prefs.rs:229
+msgid "Use System Monospace Font"
+msgstr ""
+
+#: prefs.rs:260
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: prefs.rs:261
+msgid "Click an action, then press the new key combination"
+msgstr ""
+
+#: prefs.rs:285
+msgid "Reset"
+msgstr ""
+
+#: prefs.rs:288
+msgid "Restore all default shortcuts"
+msgstr ""
+
+#: prefs.rs:311
+msgid ""
+"An embedded terminal at the bottom of Nautilus (GNOME Files) windows. It "
+"follows the displayed folder, and the files selected in Nautilus are "
+"available in the SEL variable."
+msgstr ""
+
+#: prefs.rs:313
+msgid "Built with"
+msgstr ""
+
+#: prefs.rs:313
+msgid "VTE (GNOME terminal widget)"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:6
+msgid "Embedded terminal at the bottom of the window"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:13
+msgid ""
+"ShellMan adds a real terminal at the bottom of Files windows. Press F4 to "
+"show it, give it the keyboard or hide it."
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:18
+msgid "The shell follows the folder displayed in the window"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:19
+msgid "The selected files are available in the SEL variable"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:20
+msgid "One terminal per tab, which can be split"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:21
+msgid "Colors of your usual terminal, keyboard shortcuts that can be changed"
+msgstr ""
+
+#: data/io.github.scresto09.ShellMan.metainfo.xml:27
+msgid "Two terminals side by side under the files"
+msgstr ""

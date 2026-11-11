@@ -1,0 +1,23 @@
+Source: shellman
+Section: gnome
+Priority: optional
+Maintainer: Sylvain Cresto <scresto@gmail.com>
+Build-Depends: appstream,
+               debhelper-compat (= 13),
+               gettext,
+               libadwaita-1-dev (>= 1.5),
+               libgtk-4-dev (>= 4.14),
+               libnautilus-extension-dev (>= 43),
+               libvte-2.91-gtk4-0,
+               pkgconf
+Standards-Version: 4.7.0
+Homepage: https://github.com/scresto09/shellman
+Rules-Requires-Root: no
+
+Package: shellman
+Architecture: any
+Depends: nautilus (>= 43), ${misc:Depends}, ${shlibs:Depends}
+Description: Embedded terminal for Nautilus (GNOME Files)
+ ShellMan adds a terminal at the bottom of Nautilus windows, one per tab. It
+ follows the displayed folder, the files selected in Nautilus are available in
+ the SEL variable, and terminals can be split. Press F4 to show or hide it.

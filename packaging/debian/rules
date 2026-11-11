@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) PREFIX=/usr
+
+override_dh_auto_install:
+	$(MAKE) install PREFIX=/usr DESTDIR=$(CURDIR)/debian/shellman
+
+override_dh_auto_test:
+	$(MAKE) check
+
+override_dh_auto_clean:
+
+# dwz does not handle the DWARF produced by rustc
+override_dh_dwz:

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>io.github.scresto09.ShellMan</id>
+  <extends>org.gnome.Nautilus</extends>
+  <name translate="no">ShellMan</name>
+  <summary>Embedded terminal at the bottom of the window</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.scresto09">
+    <name translate="no">Sylvain Cresto</name>
+  </developer>
+  <description>
+    <p>
+      ShellMan adds a real terminal at the bottom of Files windows. Press F4 to
+      show it, give it the keyboard or hide it.
+    </p>
+    <ul>
+      <li>The shell follows the folder displayed in the window</li>
+      <li>The selected files are available in the SEL variable</li>
+      <li>One terminal per tab, which can be split</li>
+      <li>Colors of your usual terminal, keyboard shortcuts that can be changed</li>
+    </ul>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://scresto.pages-perso.free.fr/shellman/img/screenshot.png</image>
+      <caption>Two terminals side by side under the files</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://scresto.pages-perso.free.fr/shellman/</url>
+  <url type="bugtracker">https://github.com/scresto09/shellman/issues</url>
+  <url type="vcs-browser">https://github.com/scresto09/shellman</url>
+  <url type="translate">https://github.com/scresto09/shellman/tree/main/po</url>
+  <releases>
+    <release version="0.1.0" date="2026-11-12"/>
+  </releases>
+  <translation type="gettext">shellman</translation>
+</component>

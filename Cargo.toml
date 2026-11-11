@@ -1,0 +1,21 @@
+[package]
+name = "shellman"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sylvain Cresto"]
+license = "GPL-3.0-or-later"
+homepage = "https://github.com/scresto09/shellman"
+repository = "https://github.com/scresto09/shellman"
+description = "Embedded terminal at the bottom of Nautilus 50 (GNOME Files) windows: native extension in Rust"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.10", features = ["v4_14"] }
+adw = { package = "libadwaita", version = "0.8", features = ["v1_5"] }
+libc = "0.2"
+gettext-rs = { version = "0.8.0", features = ["gettext-system"] }
+
+[profile.release]
+panic = "unwind"   # panics are caught at the C boundaries (util::guard)
