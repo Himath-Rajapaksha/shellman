@@ -948,6 +948,7 @@ fn try_start() -> bool {
         unsafe { gtk::set_initialized() };
         let Some(app) = app() else { return false };
         crate::icons::install();
+        crate::style::install();
         crate::shell::remove_stale_files();
         log_nautilus_version();
         setup(&app);

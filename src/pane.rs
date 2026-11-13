@@ -6,9 +6,11 @@ use std::rc::{Rc, Weak};
 use adw::prelude::*;
 use gtk::gdk;
 use gtk::gio;
+use gtk::gio::prelude::FileExt;
 use gtk::glib;
 
 use crate::config;
+use crate::file_actions;
 use crate::i18n::{ntr, tr};
 use crate::log;
 use crate::panel::Panel;
@@ -74,6 +76,17 @@ impl Pane {
             integrated: Cell::new(false),
             cd_file: shell::runtime_file("cd"),
             state_file: shell::runtime_file("state"),
+        });
+        install_drop_target(&pane, gdk::FileList::static_type(), false, |value| {
+            value.get::<gdk::FileList>()
+                .map(|list| file_actions::dedupe(
+                    list.files().into_iter().filter_map(|f| f.path()).collect()))
+                .unwrap_or_default()
+        });
+        install_drop_target(&pane, glib::Type::STRING, true, |value| {
+            value.get::<String>()
+                .map(|text| file_actions::parse_uri_list(&text))
+                .unwrap_or_default()
         });
         pane.apply_settings();
         pane.widget.add_css_class("view");
@@ -488,4 +501,57 @@ impl Pane {
             }
         }
     }
+}
+
+fn install_drop_target(pane: &Rc<Pane>, ty: glib::Type, uri_only: bool,
+                       extract: fn(&glib::Value) -> Vec<PathBuf>) {
+    let target = gtk::DropTarget::new(ty, gdk::DragAction::COPY);
+    target.set_propagation_phase(gtk::PropagationPhase::Capture);
+    if uri_only {
+        target.connect_accept(|_, d| d.formats().contain_mime_type("text/uri-list"));
+    }
+
+    let weak = Rc::downgrade(pane);
+    target.connect_enter(move |_, _, _| {
+        if let Some(p) = weak.upgrade() {
+            p.widget.add_css_class("shellman-drop-target");
+        }
+        gdk::DragAction::COPY
+    });
+
+    let weak = Rc::downgrade(pane);
+    target.connect_leave(move |_| {
+        if let Some(p) = weak.upgrade() {
+            p.widget.remove_css_class("shellman-drop-target");
+        }
+    });
+
+    let weak = Rc::downgrade(pane);
+    target.connect_drop(move |_, value, _, _| {
+        let paths = extract(value);
+        let Some(p) = weak.upgrade() else { return false };
+        p.widget.remove_css_class("shellman-drop-target");
+        guard("drop", false, || drop_paths(&p, paths))
+    });
+
+    pane.widget.add_controller(target);
+}
+
+fn drop_paths(p: &Rc<Pane>, paths: Vec<PathBuf>) -> bool {
+    let Some(panel) = p.panel.upgrade() else { return false };
+    if paths.is_empty() {
+        p.term.widget().error_bell();
+        panel.message(tr("Nothing inserted: no local file in the drop"));
+        return true;
+    }
+    p.focus();
+    match p.insert_paths(&paths) {
+        Some(0) => {}
+        Some(n) => panel.message(
+            ntr("{n} missing item skipped", "{n} missing items skipped", n as u32)
+                .replace("{n}", &n.to_string())),
+        None => panel.message(
+            tr("Cannot insert: a file name cannot be written safely for this shell")),
+    }
+    true
 }

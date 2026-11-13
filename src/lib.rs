@@ -14,6 +14,7 @@ pub mod selection;
 pub mod settings;
 pub mod shell;
 pub mod status;
+pub mod style;
 pub mod util;
 pub mod vte;
 
