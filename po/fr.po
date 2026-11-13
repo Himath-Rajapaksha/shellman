@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: shellman\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 01:03+0100\n"
+"POT-Creation-Date: 2026-11-13 15:12+0530\n"
 "PO-Revision-Date: 2026-11-11 12:00+0100\n"
 "Last-Translator: Sylvain Cresto\n"
 "Language-Team: French\n"
@@ -19,11 +19,11 @@ msgstr ""
 msgid "Show or Hide the Terminal"
 msgstr "Afficher / masquer le terminal"
 
-#: config.rs:9 i18n.rs:40 i18n.rs:43 pane.rs:398
+#: config.rs:9 i18n.rs:41 i18n.rs:44 pane.rs:490
 msgid "Copy"
 msgstr "Copier"
 
-#: config.rs:10 pane.rs:399
+#: config.rs:10 pane.rs:491
 msgid "Paste"
 msgstr "Coller"
 
@@ -31,11 +31,11 @@ msgstr "Coller"
 msgid "Insert Selected Files"
 msgstr "Insérer les fichiers sélectionnés"
 
-#: config.rs:12 pane.rs:410
+#: config.rs:12 pane.rs:505
 msgid "Split Right"
 msgstr "Diviser à droite"
 
-#: config.rs:13 pane.rs:411
+#: config.rs:13 pane.rs:506
 msgid "Split Down"
 msgstr "Diviser en dessous"
 
@@ -43,77 +43,151 @@ msgstr "Diviser en dessous"
 msgid "Split Automatically"
 msgstr "Répartir automatiquement"
 
-#: config.rs:15 pane.rs:412
+#: config.rs:15 pane.rs:507
 msgid "Close Terminal"
 msgstr "Fermer le terminal"
 
-#: config.rs:16 pane.rs:407
+#: config.rs:16 pane.rs:499
 msgid "Go to Tab Folder"
 msgstr "Aller au dossier de l'onglet"
 
-#: config.rs:17
+#: config.rs:17 pane.rs:500
+msgid "Go to Selected Folder"
+msgstr "Aller au dossier sélectionné"
+
+#: config.rs:18
 msgid "Go to Left Terminal"
 msgstr "Aller au terminal de gauche"
 
-#: config.rs:18
+#: config.rs:19
 msgid "Go to Right Terminal"
 msgstr "Aller au terminal de droite"
 
-#: config.rs:19
+#: config.rs:20
 msgid "Go to Terminal Above"
 msgstr "Aller au terminal du dessus"
 
-#: config.rs:20
+#: config.rs:21
 msgid "Go to Terminal Below"
 msgstr "Aller au terminal du dessous"
 
-#: i18n.rs:44 i18n.rs:46 pane.rs:402
+#: config.rs:22 pane.rs:503
+msgid "New Terminal at Tab Folder"
+msgstr "Nouveau terminal dans le dossier de l'onglet"
+
+#: config.rs:23 pane.rs:504
+msgid "Duplicate Terminal"
+msgstr "Dupliquer le terminal"
+
+#: i18n.rs:45 i18n.rs:47 pane.rs:494
 msgid "Insert the Selected File"
 msgid_plural "Insert the {n} Selected Files"
 msgstr[0] "Insérer le fichier sélectionné"
 msgstr[1] "Insérer les {n} fichiers sélectionnés"
 
-#: lib.rs:35
+#: lib.rs:40
+msgid "Open Terminal Here"
+msgstr "Ouvrir un terminal ici"
+
+#: lib.rs:41
+msgid "Open a new terminal in this folder"
+msgstr "Ouvrir un nouveau terminal dans ce dossier"
+
+#: lib.rs:49
+msgid "Insert into Terminal"
+msgstr "Insérer dans le terminal"
+
+#: lib.rs:50
+msgid "Insert the selected paths into the terminal"
+msgstr "Insérer les chemins sélectionnés dans le terminal"
+
+#: lib.rs:58
+msgid "Copy Path"
+msgstr "Copier le chemin"
+
+#: lib.rs:59
+msgid "Copy the selected paths"
+msgstr "Copier les chemins sélectionnés"
+
+#: lib.rs:65
+msgid "Copy as URI"
+msgstr "Copier comme URI"
+
+#: lib.rs:66
+msgid "Copy the selected paths as file:// URIs"
+msgstr "Copier les chemins sélectionnés comme URI file://"
+
+#: lib.rs:77
 msgid "Embedded Terminal"
 msgstr "Terminal intégré"
 
-#: lib.rs:36
+#: lib.rs:78
 msgid "Show or hide the terminal at the bottom of the window"
 msgstr "Afficher / masquer le terminal en bas de la fenêtre"
 
-#: pane.rs:400
+#: pane.rs:387
+msgid "Select exactly one folder"
+msgstr "Sélectionnez exactement un dossier"
+
+#: pane.rs:492
 msgid "Select All"
 msgstr "Tout sélectionner"
 
-#: pane.rs:405
+#: pane.rs:497
 msgid "Insert the {var} Variable"
 msgstr "Insérer la variable {var}"
 
-#: pane.rs:408 prefs.rs:175
+#: pane.rs:501 prefs.rs:175
 msgid "Follow Nautilus Folder"
 msgstr "Suivre le dossier de Nautilus"
 
-#: pane.rs:414 panel.rs:603
+#: pane.rs:509 panel.rs:733
 msgid "Preferences…"
 msgstr "Paramètres…"
 
-#: panel.rs:254
+#: pane.rs:589
+msgid "Nothing inserted: no local file in the drop"
+msgstr "Rien n'a été inséré : aucun fichier local"
+
+#: pane.rs:596 panel.rs:262
+msgid "{n} missing item skipped"
+msgid_plural "{n} missing items skipped"
+msgstr[0] "{n} élément manquant ignoré"
+msgstr[1] "{n} éléments manquants ignorés"
+
+#: pane.rs:599 panel.rs:253
+msgid "Cannot insert: a file name cannot be written safely for this shell"
+msgstr ""
+"Insertion impossible : un nom de fichier ne peut pas être écrit sans risque "
+"pour ce shell"
+
+#: panel.rs:234
+msgid "Folder no longer exists"
+msgstr "Le dossier n'existe plus"
+
+#: panel.rs:258 status.rs:20 status.rs:79
+msgid "{n} remote item skipped"
+msgid_plural "{n} remote items skipped"
+msgstr[0] "{n} élément distant ignoré"
+msgstr[1] "{n} éléments distants ignorés"
+
+#: panel.rs:317
 msgid "Hide the terminal"
 msgstr "Masquer le terminal"
 
-#: panel.rs:254
+#: panel.rs:317
 msgid "Open a terminal here"
 msgstr "Ouvrir un terminal ici"
 
-#: panel.rs:600 prefs.rs:173
+#: panel.rs:730 prefs.rs:173
 msgid "Terminal"
 msgstr "Terminal"
 
-#: panel.rs:604
+#: panel.rs:734
 msgid "About ShellMan"
 msgstr "À propos de ShellMan"
 
-#: panel.rs:608
+#: panel.rs:738
 msgid "Preferences, About"
 msgstr "Paramètres, à propos"
 
@@ -308,6 +382,20 @@ msgstr "Basé sur"
 #: prefs.rs:313
 msgid "VTE (GNOME terminal widget)"
 msgstr "VTE (terminal GNOME)"
+
+#: status.rs:5 status.rs:36 status.rs:77
+msgid "No files selected"
+msgstr "Aucun fichier sélectionné"
+
+#: status.rs:7 status.rs:44
+msgid "{n} file selected"
+msgid_plural "{n} files selected"
+msgstr[0] "{n} fichier sélectionné"
+msgstr[1] "{n} fichiers sélectionnés"
+
+#: status.rs:13 status.rs:46
+msgid "{shortcut} to insert"
+msgstr "{shortcut} pour insérer"
 
 #: data/io.github.scresto09.ShellMan.metainfo.xml:6
 msgid "Embedded terminal at the bottom of the window"
