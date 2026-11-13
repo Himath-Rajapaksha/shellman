@@ -43,6 +43,28 @@ pub fn file_path(file: &glib::Object) -> Option<PathBuf> {
     loc?.path()
 }
 
+pub fn file_paths(list: *mut GList) -> (Vec<PathBuf>, usize) {
+    let mut paths = Vec::new();
+    let mut skipped = 0;
+    let mut node = list;
+    while !node.is_null() {
+        let data = unsafe { (*node).data };
+        let path = if data.is_null() {
+            None
+        } else {
+            let obj: glib::Object =
+                unsafe { from_glib_none(data as *mut gobject_ffi::GObject) };
+            file_path(&obj)
+        };
+        match path {
+            Some(p) => paths.push(p),
+            None => skipped += 1,
+        }
+        node = unsafe { (*node).next };
+    }
+    (paths, skipped)
+}
+
 pub struct MenuItem(glib::Object);
 
 impl MenuItem {

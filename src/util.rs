@@ -74,6 +74,15 @@ pub fn cstr(s: &str) -> std::ffi::CString {
     std::ffi::CString::new(s.replace('\0', "")).unwrap_or_default()
 }
 
+pub fn copy_text(text: &str) -> bool {
+    use gtk::prelude::*;
+    let Some(display) = gtk::gdk::Display::default() else {
+        return false;
+    };
+    display.clipboard().set_text(text);
+    true
+}
+
 pub fn base_key(ctrl: &gtk::EventControllerKey, keyval: gtk::gdk::Key, keycode: u32) -> gtk::gdk::Key {
     use gtk::prelude::*;
     ctrl.widget()

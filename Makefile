@@ -28,7 +28,12 @@ install:
 check:
 	appstreamcli validate --no-net data/$(METAINFO)
 
+test:
+	cargo clippy --all-targets -- -D warnings
+	cargo test --all-targets
+	cargo build --release --locked
+
 clean:
 	$(CARGO) clean
 
-.PHONY: all install check clean
+.PHONY: all install check test clean

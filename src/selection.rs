@@ -65,6 +65,15 @@ pub fn selected_in(model: &gtk::SelectionModel) -> Selection {
     sel
 }
 
+pub fn folder_target(sel: &Selection) -> Option<PathBuf> {
+    let mut dirs = sel.paths.iter().filter(|p| p.is_dir());
+    let first = dirs.next()?;
+    if dirs.next().is_some() {
+        return None;
+    }
+    Some(first.clone())
+}
+
 pub fn new_sel_file() -> PathBuf {
     shell::runtime_file("sel")
 }
@@ -77,5 +86,31 @@ pub fn write_sel_file(file: &Path, paths: &[PathBuf]) {
     }
     if let Err(e) = shell::write_atomic(file, &content) {
         log!("cannot write {}: {e}", file.display());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn folder_target_requires_exactly_one_directory() {
+        let one = Selection { paths: vec![PathBuf::from("/")], skipped: 0 };
+        assert_eq!(folder_target(&one), Some(PathBuf::from("/")));
+
+        let with_file = Selection {
+            paths: vec![PathBuf::from("/"), PathBuf::from("/nope-file")],
+            skipped: 1,
+        };
+        assert_eq!(folder_target(&with_file), Some(PathBuf::from("/")));
+
+        let file_only = Selection { paths: vec![PathBuf::from("/nope-file")], skipped: 0 };
+        assert_eq!(folder_target(&file_only), None);
+
+        let two = Selection {
+            paths: vec![PathBuf::from("/"), PathBuf::from("/tmp")],
+            skipped: 0,
+        };
+        assert_eq!(folder_target(&two), None);
     }
 }

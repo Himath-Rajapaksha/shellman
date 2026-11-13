@@ -2,6 +2,7 @@
 
 pub mod colors;
 pub mod config;
+pub mod file_actions;
 pub mod i18n;
 pub mod icons;
 pub mod location;
@@ -12,6 +13,8 @@ pub mod prefs;
 pub mod selection;
 pub mod settings;
 pub mod shell;
+pub mod status;
+pub mod style;
 pub mod util;
 pub mod vte;
 
@@ -26,8 +29,47 @@ use util::guard;
 
 static mut TYPES: [GType; 1] = [0];
 
-unsafe extern "C" fn get_file_items(_p: gpointer, _files: *mut GList) -> *mut GList {
-    ptr::null_mut()
+unsafe extern "C" fn get_file_items(_p: gpointer, files: *mut GList) -> *mut GList {
+    guard("file menu", ptr::null_mut(), || {
+        let (paths, remote) = nautilus::file_paths(files);
+        let actions = file_actions::FileActions::from_paths(paths, remote);
+        let mut items = Vec::new();
+
+        if let Some(dir) = actions.open_here.clone() {
+            let item = MenuItem::new("ShellMan::open-terminal-here",
+                &tr("Open Terminal Here"),
+                &tr("Open a new terminal in this folder"));
+            item.on_activate(move || panel::open_terminal_at(&dir));
+            items.push(item);
+        }
+
+        if !actions.insert.is_empty() {
+            let paths = actions.insert.clone();
+            let item = MenuItem::new("ShellMan::insert-into-terminal",
+                &tr("Insert into Terminal"),
+                &tr("Insert the selected paths into the terminal"));
+            item.on_activate(move || panel::insert_paths(&paths, remote));
+            items.push(item);
+        }
+
+        if !actions.copy.is_empty() {
+            let paths = actions.copy.clone();
+            let item = MenuItem::new("ShellMan::copy-path",
+                &tr("Copy Path"),
+                &tr("Copy the selected paths"));
+            item.on_activate(move || panel::copy_paths(&paths));
+            items.push(item);
+
+            let paths = actions.copy.clone();
+            let item = MenuItem::new("ShellMan::copy-uri",
+                &tr("Copy as URI"),
+                &tr("Copy the selected paths as file:// URIs"));
+            item.on_activate(move || panel::copy_uris(&paths));
+            items.push(item);
+        }
+
+        nautilus::menu_list(items)
+    })
 }
 
 unsafe extern "C" fn get_background_items(_p: gpointer, _f: *mut NautilusFileInfoC) -> *mut GList {

@@ -1,11 +1,11 @@
 [package]
 name = "shellman"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-authors = ["Sylvain Cresto"]
+authors = ["Sylvain Cresto", "Himath Rajapaksha"]
 license = "GPL-3.0-or-later"
 homepage = "https://github.com/scresto09/shellman"
-repository = "https://github.com/scresto09/shellman"
+repository = "https://github.com/Himath-Rajapaksha/shellman"
 description = "Embedded terminal at the bottom of Nautilus 50 (GNOME Files) windows: native extension in Rust"
 
 [lib]

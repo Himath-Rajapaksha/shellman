@@ -1,3 +1,8 @@
+> **Fork:** [Himath-Rajapaksha/shellman](https://github.com/Himath-Rajapaksha/shellman),
+> maintained by Himath Rajapaksha. Based on
+> [scresto09/shellman](https://github.com/scresto09/shellman) v0.1.0.
+> GPL-3.0-or-later. This fork is source-only for v0.2; see [FORK.md](FORK.md).
+
 # ShellMan
 
 A terminal at the bottom of Nautilus (GNOME Files) windows.
@@ -21,6 +26,7 @@ extension API does not really allow: a Nautilus update can break it.
 
 Each [release](https://github.com/scresto09/shellman/releases) has a `.deb`
 (Ubuntu 24.04 and later, Debian 13) and a `.rpm` (Fedora, RHEL 10, openSUSE).
+This fork does not publish packages in v0.2; build from source instead.
 
 ```bash
 sudo apt install ./shellman_*.deb                          # Debian, Ubuntu

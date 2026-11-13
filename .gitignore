@@ -1,3 +1,4 @@
 target/
 /packaging/out/
 /web/
+.superpowers/

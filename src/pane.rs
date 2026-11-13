@@ -6,12 +6,15 @@ use std::rc::{Rc, Weak};
 use adw::prelude::*;
 use gtk::gdk;
 use gtk::gio;
+use gtk::gio::prelude::FileExt;
 use gtk::glib;
 
 use crate::config;
+use crate::file_actions;
 use crate::i18n::{ntr, tr};
 use crate::log;
 use crate::panel::Panel;
+use crate::selection;
 use crate::shell::{self, Shell};
 use crate::settings;
 use crate::util::guard;
@@ -24,8 +27,10 @@ pub struct Pane {
     actions: gio::SimpleActionGroup,
     pid: Cell<Option<i32>>,
     spawning: Cell<bool>,
+    skip_follow: Cell<bool>,
     shell_dir: RefCell<Option<PathBuf>>,
     pending: RefCell<Option<PathBuf>>,
+    pending_feed: RefCell<String>,
     follow_override: Cell<Option<bool>>,
     shell: Shell,
     integrated: Cell<bool>,
@@ -42,6 +47,10 @@ pub fn system_monospace_font() -> Option<String> {
 
 fn accel_for(action: &str) -> Option<String> {
     settings::accels(action).into_iter().next()
+}
+
+fn auto_orientation(w: i32, h: i32) -> gtk::Orientation {
+    if w >= h { gtk::Orientation::Horizontal } else { gtk::Orientation::Vertical }
 }
 
 impl Pane {
@@ -63,13 +72,26 @@ impl Pane {
             actions: gio::SimpleActionGroup::new(),
             pid: Cell::new(None),
             spawning: Cell::new(false),
+            skip_follow: Cell::new(false),
             shell_dir: RefCell::new(None),
             pending: RefCell::new(None),
+            pending_feed: RefCell::new(String::new()),
             follow_override: Cell::new(None),
             shell: Shell::of(&user_shell()),
             integrated: Cell::new(false),
             cd_file: shell::runtime_file("cd"),
             state_file: shell::runtime_file("state"),
+        });
+        install_drop_target(&pane, gdk::FileList::static_type(), false, |value| {
+            value.get::<gdk::FileList>()
+                .map(|list| file_actions::dedupe(
+                    list.files().into_iter().filter_map(|f| f.path()).collect()))
+                .unwrap_or_default()
+        });
+        install_drop_target(&pane, glib::Type::STRING, true, |value| {
+            value.get::<String>()
+                .map(|text| file_actions::parse_uri_list(&text))
+                .unwrap_or_default()
         });
         pane.apply_settings();
         pane.widget.add_css_class("view");
@@ -142,12 +164,15 @@ impl Pane {
         add("insert", |p| p.insert_selection());
         add("insert-var", |p| p.insert_variable());
         add("goto-tab-dir", |p| p.goto_tab_dir());
+        add("goto-selected-folder", |p| p.goto_selected_folder());
         add("split-right", |p| p.split(gtk::Orientation::Horizontal));
         add("split-down", |p| p.split(gtk::Orientation::Vertical));
         add("split-auto", |p| {
             let (w, h) = (p.widget.width(), p.widget.height());
-            p.split(if w >= h { gtk::Orientation::Horizontal } else { gtk::Orientation::Vertical });
+            p.split(auto_orientation(w, h));
         });
+        add("new-at-tab-dir", |p| p.new_at_tab_dir());
+        add("duplicate", |p| p.duplicate());
         for (name, dir) in [("focus-left", gtk::DirectionType::Left),
                             ("focus-right", gtk::DirectionType::Right),
                             ("focus-up", gtk::DirectionType::Up),
@@ -236,6 +261,10 @@ impl Pane {
         self.follow_override.get().unwrap_or_else(|| settings::with(|s| s.follow))
     }
 
+    pub fn take_follow_skip(&self) -> bool {
+        self.pid.get().is_some() && self.skip_follow.replace(false)
+    }
+
     pub fn shell_dir(&self) -> Option<PathBuf> {
         self.shell_dir.borrow().clone()
     }
@@ -258,8 +287,15 @@ impl Pane {
     }
 
     pub fn spawn(self: &Rc<Self>, dir: &Path) {
+        self.spawn_at(dir, false);
+    }
+
+    pub fn spawn_at(self: &Rc<Self>, dir: &Path, suppress_follow: bool) {
         if self.pid.get().is_some() || self.spawning.get() {
             return;
+        }
+        if suppress_follow {
+            self.skip_follow.set(true);
         }
         let Some(panel) = self.panel.upgrade() else { return };
         self.spawning.set(true);
@@ -278,7 +314,15 @@ impl Pane {
             let Some(p) = weak.upgrade() else { return };
             p.spawning.set(false);
             p.pid.set(pid);
-            if let (Some(_), Some(panel)) = (pid, p.panel.upgrade()) {
+            if pid.is_none() {
+                p.skip_follow.set(false);
+                return;
+            }
+            let text = std::mem::take(&mut *p.pending_feed.borrow_mut());
+            if !text.is_empty() {
+                p.term.feed(&text);
+            }
+            if let Some(panel) = p.panel.upgrade() {
                 panel.follow();
             }
         });
@@ -336,40 +380,87 @@ impl Pane {
         self.go_to(dir);
     }
 
+    fn goto_selected_folder(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let Some(dir) = selection::folder_target(&panel.selected()) else {
+            self.term.widget().error_bell();
+            panel.message(tr("Select exactly one folder"));
+            return;
+        };
+        if !self.integrated.get() {
+            self.term.widget().error_bell();
+            return;
+        }
+        self.go_to(Some(dir));
+    }
+
     fn split(self: &Rc<Self>, orientation: gtk::Orientation) {
         if let Some(panel) = self.panel.upgrade() {
             panel.split(self, orientation);
         }
     }
 
-    fn insert_variable(&self) {
+    fn new_at_tab_dir(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let dir = panel.current_dir().filter(|d| d.is_dir())
+            .or_else(|| self.shell_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(glib::home_dir);
+        let orientation = auto_orientation(self.widget.width(), self.widget.height());
+        panel.split_at(self, orientation, Some(dir));
+    }
+
+    fn duplicate(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let dir = self.shell_dir().filter(|d| d.is_dir())
+            .or_else(|| panel.current_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(glib::home_dir);
+        let orientation = auto_orientation(self.widget.width(), self.widget.height());
+        panel.split_at(self, orientation, Some(dir));
+    }
+
+    fn insert_variable(self: &Rc<Self>) {
         match self.shell.sel_variable() {
             Some(v) => self.term.feed(&format!("{v} ")),
             None => self.insert_selection(),
         }
     }
 
-    fn insert_selection(&self) {
+    /// Inserts quoted paths, dropping paths that no longer exist.
+    /// Returns the number of skipped paths, or None if quoting was refused.
+    pub fn insert_paths(&self, paths: &[PathBuf]) -> Option<usize> {
+        let (present, missing) = crate::file_actions::existing(paths);
+        if present.is_empty() {
+            self.term.widget().error_bell();
+            return Some(missing);
+        }
+        let Some(text) = shell::words(self.shell, &present, shell::utf8_locale()) else {
+            log!("insertion refused: a file name cannot be written safely for this shell");
+            self.term.widget().error_bell();
+            return None;
+        };
+        if self.pid.get().is_some() {
+            self.term.feed(&text);
+        } else {
+            // `Insert into Terminal` can create this pane and insert immediately;
+            // `feed` writes to the PTY, so it must wait for the spawn callback.
+            self.pending_feed.borrow_mut().push_str(&text);
+        }
+        Some(missing)
+    }
+
+    fn insert_selection(self: &Rc<Self>) {
         let Some(panel) = self.panel.upgrade() else { return };
         let sel = panel.selected();
-        if sel.paths.is_empty() || sel.skipped > 0 {
-            if sel.skipped > 0 {
-                log!("insertion refused: {} selected item(s) have no local path", sel.skipped);
-            }
+        if sel.paths.is_empty() && sel.skipped == 0 {
             self.term.widget().error_bell();
             return;
         }
-        match shell::words(self.shell, &sel.paths, shell::utf8_locale()) {
-            Some(text) => self.term.feed(&text),
-            None => {
-                log!("insertion refused: a file name cannot be written safely for this shell");
-                self.term.widget().error_bell();
-            }
-        }
+        panel.insert_paths(&sel.paths, sel.skipped);
     }
 
     fn popup_menu(&self, x: f64, y: f64) {
-        let n = self.panel.upgrade().map_or(0, |p| p.selected().paths.len());
+        let sel = self.panel.upgrade().map(|p| p.selected()).unwrap_or_default();
+        let n = sel.paths.len();
         let enable = |name: &str, on: bool| {
             if let Some(a) = self.actions.lookup_action(name)
                 .and_then(|a| a.downcast::<gio::SimpleAction>().ok())
@@ -383,6 +474,7 @@ impl Pane {
         enable("insert-var", sel_var.is_some());
         enable("follow", self.integrated.get());
         enable("goto-tab-dir", self.integrated.get());
+        enable("goto-selected-folder", selection::folder_target(&sel).is_some());
         if let Some(a) = self.actions.lookup_action("follow") {
             a.change_state(&self.follows().to_variant());
         }
@@ -405,8 +497,11 @@ impl Pane {
         files.append_item(&item(&tr("Insert the {var} Variable").replace("{var}", sel_var.unwrap_or("SEL")), "insert-var"));
         let follow = gio::Menu::new();
         follow.append_item(&item(&tr("Go to Tab Folder"), "goto-tab-dir"));
+        follow.append_item(&item(&tr("Go to Selected Folder"), "goto-selected-folder"));
         follow.append(Some(&tr("Follow Nautilus Folder")), Some("shellman.follow"));
         let layout = gio::Menu::new();
+        layout.append_item(&item(&tr("New Terminal at Tab Folder"), "new-at-tab-dir"));
+        layout.append_item(&item(&tr("Duplicate Terminal"), "duplicate"));
         layout.append_item(&item(&tr("Split Right"), "split-right"));
         layout.append_item(&item(&tr("Split Down"), "split-down"));
         layout.append_item(&item(&tr("Close Terminal"), "close"));
@@ -427,7 +522,7 @@ impl Pane {
         pop.set_pointing_to(Some(&gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
         let actions = self.actions.clone();
         pop.connect_closed(move |p| guard("menu closed", (), || {
-            for name in ["copy", "insert", "insert-var", "follow", "goto-tab-dir"] {
+            for name in ["copy", "insert", "insert-var", "follow", "goto-tab-dir", "goto-selected-folder"] {
                 if let Some(a) = actions.lookup_action(name).and_downcast::<gio::SimpleAction>() {
                     a.set_enabled(true);
                 }
@@ -440,6 +535,7 @@ impl Pane {
 
     pub fn stop(&self) {
         self.pending.replace(None);
+        self.pending_feed.borrow_mut().clear();
         let _ = std::fs::remove_file(&self.cd_file);
         let _ = std::fs::remove_file(&self.state_file);
         let mut c = self.term.widget().first_child();
@@ -449,5 +545,69 @@ impl Pane {
                 w.unparent();
             }
         }
+    }
+}
+
+fn install_drop_target(pane: &Rc<Pane>, ty: glib::Type, uri_only: bool,
+                       extract: fn(&glib::Value) -> Vec<PathBuf>) {
+    let target = gtk::DropTarget::new(ty, gdk::DragAction::COPY);
+    target.set_propagation_phase(gtk::PropagationPhase::Capture);
+    if uri_only {
+        target.connect_accept(|_, d| d.formats().contain_mime_type("text/uri-list"));
+    }
+
+    let weak = Rc::downgrade(pane);
+    target.connect_enter(move |_, _, _| {
+        if let Some(p) = weak.upgrade() {
+            p.widget.add_css_class("shellman-drop-target");
+        }
+        gdk::DragAction::COPY
+    });
+
+    let weak = Rc::downgrade(pane);
+    target.connect_leave(move |_| {
+        if let Some(p) = weak.upgrade() {
+            p.widget.remove_css_class("shellman-drop-target");
+        }
+    });
+
+    let weak = Rc::downgrade(pane);
+    target.connect_drop(move |_, value, _, _| {
+        let paths = extract(value);
+        let Some(p) = weak.upgrade() else { return false };
+        p.widget.remove_css_class("shellman-drop-target");
+        guard("drop", false, || drop_paths(&p, paths))
+    });
+
+    pane.widget.add_controller(target);
+}
+
+fn drop_paths(p: &Rc<Pane>, paths: Vec<PathBuf>) -> bool {
+    let Some(panel) = p.panel.upgrade() else { return false };
+    if paths.is_empty() {
+        p.term.widget().error_bell();
+        panel.message(tr("Nothing inserted: no local file in the drop"));
+        return true;
+    }
+    p.focus();
+    match p.insert_paths(&paths) {
+        Some(0) => {}
+        Some(n) => panel.message(
+            ntr("{n} missing item skipped", "{n} missing items skipped", n as u32)
+                .replace("{n}", &n.to_string())),
+        None => panel.message(
+            tr("Cannot insert: a file name cannot be written safely for this shell")),
+    }
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auto_orientation_picks_the_longer_side() {
+        assert_eq!(auto_orientation(100, 50), gtk::Orientation::Horizontal);
+        assert_eq!(auto_orientation(50, 100), gtk::Orientation::Vertical);
     }
 }

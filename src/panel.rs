@@ -1,5 +1,5 @@
 use std::cell::{Cell, OnceCell, RefCell};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
@@ -8,13 +8,16 @@ use gtk::gio;
 use gtk::glib;
 
 use crate::config;
-use crate::i18n::tr;
+use crate::file_actions;
+use crate::i18n::{ntr, tr};
 use crate::location::LocationSource;
 use crate::log;
 use crate::pane::Pane;
 use crate::selection;
 use crate::settings;
 use crate::prefs;
+use crate::status;
+use crate::util;
 use crate::util::{guard, type_name, walk};
 
 const DATA_KEY: &str = "shellman-panel";
@@ -44,6 +47,10 @@ pub struct Panel {
     win: gtk::Window,
     paned: gtk::Paned,
     stack: gtk::Stack,
+    body: gtk::Box,
+    status: gtk::Label,
+    status_message: RefCell<Option<(u64, String)>>,
+    status_seq: Cell<u64>,
     button: gtk::Widget,
     per_tab: bool,
     loc: OnceCell<Rc<LocationSource>>,
@@ -106,7 +113,13 @@ impl Panel {
         self.groups.borrow().iter().flat_map(|g| g.panes.iter().cloned()).collect()
     }
 
-    fn ensure_group(self: &Rc<Self>) -> usize {
+    pub fn active_pane(&self) -> Option<Rc<Pane>> {
+        let i = self.current_group()?;
+        let g = &self.groups.borrow()[i];
+        g.active.upgrade().or_else(|| g.panes.first().cloned())
+    }
+
+    fn ensure_group(self: &Rc<Self>, start: Option<PathBuf>) -> usize {
         if let Some(i) = self.current_group() {
             if !self.groups.borrow()[i].panes.is_empty() {
                 return i;
@@ -126,7 +139,9 @@ impl Panel {
             groups[i].panes.push(pane.clone());
             groups[i].active = Rc::downgrade(&pane);
         }
-        pane.spawn(&self.start_dir());
+        let start = start.filter(|d| d.is_dir());
+        let dir = start.clone().unwrap_or_else(|| self.start_dir());
+        pane.spawn_at(&dir, start.is_some());
         i
     }
 
@@ -145,8 +160,8 @@ impl Panel {
         }
     }
 
-    fn show_current_group(self: &Rc<Self>) {
-        let i = self.ensure_group();
+    fn show_current_group(self: &Rc<Self>, start: Option<PathBuf>) {
+        let i = self.ensure_group(start);
         let (holder, active) = {
             let g = &self.groups.borrow()[i];
             (g.holder.clone(), g.active.upgrade().or_else(|| g.panes.first().cloned()))
@@ -171,7 +186,7 @@ impl Panel {
                 None => settings::with(|s| s.show_in_new_tabs),
             };
             if show {
-                self.show_current_group();
+                self.show_current_group(None);
                 self.set_shown(true);
                 self.reveal();
             } else {
@@ -179,6 +194,7 @@ impl Panel {
             }
         }
         self.follow();
+        self.update_status();
         let weak = Rc::downgrade(self);
         glib::idle_add_local_once(move || {
             if let Some(p) = weak.upgrade() {
@@ -188,12 +204,16 @@ impl Panel {
     }
 
     fn show(self: &Rc<Self>) {
+        self.show_with_start(None);
+    }
+
+    fn show_with_start(self: &Rc<Self>, start: Option<PathBuf>) {
         let focus = gtk::prelude::GtkWindowExt::focus(&self.win);
         let in_panel = focus.as_ref().is_some_and(|f| f.is_ancestor(&self.stack));
         if !in_panel {
             self.prev_focus.set(focus.as_ref());
         }
-        self.show_current_group();
+        self.show_current_group(start);
         self.set_shown(true);
         self.reveal();
         self.refresh_selection();
@@ -207,15 +227,56 @@ impl Panel {
         }
     }
 
+    pub fn open_terminal_at(self: &Rc<Self>, dir: &Path) {
+        if !dir.is_dir() {
+            log!("open terminal here: {} is gone", dir.display());
+            self.win.error_bell();
+            self.message(tr("Folder no longer exists"));
+            return;
+        }
+        let dir = dir.to_path_buf();
+        if let Some(pane) = self.active_pane() {
+            if !self.shown() {
+                self.show();
+            }
+            self.split_at(&pane, gtk::Orientation::Horizontal, Some(dir));
+        } else {
+            self.show_with_start(Some(dir));
+        }
+    }
+
+    pub fn insert_paths(self: &Rc<Self>, paths: &[PathBuf], remote_skipped: usize) {
+        self.show();
+        let Some(pane) = self.active_pane() else { return };
+        pane.focus();
+        let Some(missing) = pane.insert_paths(paths) else {
+            self.message(tr("Cannot insert: a file name cannot be written safely for this shell"));
+            return;
+        };
+        let mut parts = Vec::new();
+        if remote_skipped > 0 {
+            parts.push(ntr("{n} remote item skipped", "{n} remote items skipped",
+                           remote_skipped as u32).replace("{n}", &remote_skipped.to_string()));
+        }
+        if missing > 0 {
+            parts.push(ntr("{n} missing item skipped", "{n} missing items skipped",
+                           missing as u32).replace("{n}", &missing.to_string()));
+        }
+        if !parts.is_empty() {
+            self.message(parts.join(" · "));
+        }
+    }
+
     fn reveal(&self) {
         for p in self.all_panes() {
             p.update_size_request();
         }
+        self.body.set_visible(true);
         self.stack.set_visible(true);
         self.update_button();
         let h = self.paned.height();
         if h > 0 {
-            let min = self.stack.measure(gtk::Orientation::Vertical, -1).0;
+            let min = self.body.measure(gtk::Orientation::Vertical, -1).0;
             let th = HEIGHT.get().unwrap_or(min).clamp(min, (h - config::MIN_FILES_HEIGHT).max(min));
             self.paned.set_position(h - th);
         }
@@ -226,6 +287,7 @@ impl Panel {
         if focus.is_some_and(|f| f.is_ancestor(&self.stack)) {
             gtk::prelude::GtkWindowExt::set_focus(&self.win, None::<&gtk::Widget>);
         }
+        self.body.set_visible(false);
         self.stack.set_visible(false);
         self.update_button();
     }
@@ -242,6 +304,7 @@ impl Panel {
             }
         }
         self.set_shown(false);
+        self.body.set_visible(false);
         self.stack.set_visible(false);
         self.update_button();
     }
@@ -261,6 +324,7 @@ impl Panel {
         }
         self.update_button();
         self.follow();
+        self.update_status();
     }
 
     pub fn follow(&self) {
@@ -271,12 +335,20 @@ impl Panel {
             .collect();
         for (is_current, panes) in groups {
             for p in panes {
-                p.go_to(if is_current && p.follows() { dir.clone() } else { None });
+                let target = if is_current && p.follows() { dir.clone() } else { None };
+                if target.is_some() && p.take_follow_skip() {
+                    continue;
+                }
+                p.go_to(target);
             }
         }
     }
 
     pub fn split(self: &Rc<Self>, pane: &Rc<Pane>, orientation: gtk::Orientation) {
+        self.split_at(pane, orientation, None);
+    }
+
+    pub fn split_at(self: &Rc<Self>, pane: &Rc<Pane>, orientation: gtk::Orientation, dir: Option<PathBuf>) {
         let Some(gi) = self.group_of(pane) else { return };
         let old = pane.widget.clone();
         let Some(parent) = old.parent() else { return };
@@ -296,7 +368,12 @@ impl Panel {
             pn.set_position(size / 2);
         }
         self.groups.borrow_mut()[gi].panes.push(new.clone());
-        new.spawn(&pane.shell_dir().filter(|d| d.is_dir()).unwrap_or_else(|| self.start_dir()));
+        let explicit = dir.as_ref().is_some_and(|d| d.is_dir());
+        let target = dir.clone()
+            .filter(|d| d.is_dir())
+            .or_else(|| pane.shell_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(|| self.start_dir());
+        new.spawn_at(&target, explicit);
         new.focus();
     }
 
@@ -409,6 +486,36 @@ impl Panel {
 
     fn refresh_selection(&self) {
         selection::write_sel_file(&self.sel_file, &self.selected().paths);
+        self.update_status();
+    }
+
+    fn update_status(&self) {
+        if let Some((_, msg)) = self.status_message.borrow().as_ref() {
+            self.status.set_text(msg);
+            return;
+        }
+        let sel = self.selected();
+        let shortcut = settings::accels("insert").first()
+            .and_then(gtk::accelerator_parse)
+            .map(|(k, m)| gtk::accelerator_get_label(k, m).to_string());
+        self.status.set_text(&status::summary(
+            sel.paths.len(), sel.skipped, shortcut.as_deref()));
+    }
+
+    pub fn message(self: &Rc<Self>, text: String) {
+        let seq = self.status_seq.get() + 1;
+        self.status_seq.set(seq);
+        self.status.set_text(&text);
+        self.status_message.replace(Some((seq, text)));
+        let weak = Rc::downgrade(self);
+        glib::timeout_add_local_once(Duration::from_secs(3), move || {
+            if let Some(p) = weak.upgrade() {
+                if p.status_seq.get() == seq {
+                    p.status_message.replace(None);
+                    p.update_status();
+                }
+            }
+        });
     }
 
     fn stop(&self) {
@@ -427,12 +534,35 @@ fn build(win: &gtk::Window, paned: gtk::Paned, button: gtk::Widget) -> Rc<Panel>
     stack.set_vhomogeneous(false);
     stack.set_hhomogeneous(false);
     stack.set_visible(false);
-    paned.set_end_child(Some(&stack));
+
+    let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    body.set_visible(false);
+    stack.set_vexpand(true);
+    body.append(&stack);
+
+    let status = gtk::Label::new(None);
+    status.set_xalign(0.0);
+    status.set_hexpand(true);
+    status.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    status.set_focusable(false);
+    status.set_selectable(false);
+    status.set_margin_start(6);
+    status.set_margin_end(6);
+    status.set_margin_top(2);
+    status.set_margin_bottom(2);
+    status.add_css_class("dim-label");
+    body.append(&status);
+
+    paned.set_end_child(Some(&body));
 
     let panel = Rc::new(Panel {
         win: win.clone(),
         paned: paned.clone(),
         stack,
+        body,
+        status,
+        status_message: RefCell::new(None),
+        status_seq: Cell::new(0),
         button: button.clone(),
         per_tab: settings::with(|s| s.per_tab),
         loc: OnceCell::new(),
@@ -738,6 +868,40 @@ pub fn restyle_all() {
     }
 }
 
+fn active_panel() -> Option<Rc<Panel>> {
+    let win = app()?.active_window()?;
+    let panel = unsafe { win.data::<Rc<Panel>>(DATA_KEY) }?;
+    Some(unsafe { panel.as_ref() }.clone())
+}
+
+pub fn open_terminal_at(dir: &Path) {
+    let Some(panel) = active_panel() else {
+        log!("open terminal here: no terminal in the active window");
+        return;
+    };
+    panel.open_terminal_at(dir);
+}
+
+pub fn insert_paths(paths: &[PathBuf], remote_skipped: usize) {
+    let Some(panel) = active_panel() else {
+        log!("insert into terminal: no terminal in the active window");
+        return;
+    };
+    panel.insert_paths(paths, remote_skipped);
+}
+
+pub fn copy_paths(paths: &[PathBuf]) {
+    if !paths.is_empty() && !util::copy_text(&file_actions::path_text(paths)) {
+        log!("clipboard: cannot copy paths");
+    }
+}
+
+pub fn copy_uris(paths: &[PathBuf]) {
+    if !paths.is_empty() && !util::copy_text(&file_actions::uri_text(paths)) {
+        log!("clipboard: cannot copy URIs");
+    }
+}
+
 pub fn toggle_active() {
     let Some(win) = app().and_then(|a| a.active_window()) else { return };
     match unsafe { win.data::<Rc<Panel>>(DATA_KEY) } {
@@ -784,6 +948,7 @@ fn try_start() -> bool {
         unsafe { gtk::set_initialized() };
         let Some(app) = app() else { return false };
         crate::icons::install();
+        crate::style::install();
         crate::shell::remove_stale_files();
         log_nautilus_version();
         setup(&app);
