@@ -19,6 +19,8 @@ pub const ACTIONS: &[(&str, &str)] = &[
     ("focus-right", N_!("Go to Right Terminal")),
     ("focus-up", N_!("Go to Terminal Above")),
     ("focus-down", N_!("Go to Terminal Below")),
+    ("new-at-tab-dir", N_!("New Terminal at Tab Folder")),
+    ("duplicate", N_!("Duplicate Terminal")),
 ];
 
 pub const DEFAULT_SHORTCUTS: &[(&str, &str)] = &[

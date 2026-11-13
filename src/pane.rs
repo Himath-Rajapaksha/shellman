@@ -49,6 +49,10 @@ fn accel_for(action: &str) -> Option<String> {
     settings::accels(action).into_iter().next()
 }
 
+fn auto_orientation(w: i32, h: i32) -> gtk::Orientation {
+    if w >= h { gtk::Orientation::Horizontal } else { gtk::Orientation::Vertical }
+}
+
 impl Pane {
     pub fn new(panel: &Rc<Panel>) -> Rc<Pane> {
         let term = Terminal::new();
@@ -165,8 +169,10 @@ impl Pane {
         add("split-down", |p| p.split(gtk::Orientation::Vertical));
         add("split-auto", |p| {
             let (w, h) = (p.widget.width(), p.widget.height());
-            p.split(if w >= h { gtk::Orientation::Horizontal } else { gtk::Orientation::Vertical });
+            p.split(auto_orientation(w, h));
         });
+        add("new-at-tab-dir", |p| p.new_at_tab_dir());
+        add("duplicate", |p| p.duplicate());
         for (name, dir) in [("focus-left", gtk::DirectionType::Left),
                             ("focus-right", gtk::DirectionType::Right),
                             ("focus-up", gtk::DirectionType::Up),
@@ -394,6 +400,24 @@ impl Pane {
         }
     }
 
+    fn new_at_tab_dir(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let dir = panel.current_dir().filter(|d| d.is_dir())
+            .or_else(|| self.shell_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(glib::home_dir);
+        let orientation = auto_orientation(self.widget.width(), self.widget.height());
+        panel.split_at(self, orientation, Some(dir));
+    }
+
+    fn duplicate(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let dir = self.shell_dir().filter(|d| d.is_dir())
+            .or_else(|| panel.current_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(glib::home_dir);
+        let orientation = auto_orientation(self.widget.width(), self.widget.height());
+        panel.split_at(self, orientation, Some(dir));
+    }
+
     fn insert_variable(self: &Rc<Self>) {
         match self.shell.sel_variable() {
             Some(v) => self.term.feed(&format!("{v} ")),
@@ -476,6 +500,8 @@ impl Pane {
         follow.append_item(&item(&tr("Go to Selected Folder"), "goto-selected-folder"));
         follow.append(Some(&tr("Follow Nautilus Folder")), Some("shellman.follow"));
         let layout = gio::Menu::new();
+        layout.append_item(&item(&tr("New Terminal at Tab Folder"), "new-at-tab-dir"));
+        layout.append_item(&item(&tr("Duplicate Terminal"), "duplicate"));
         layout.append_item(&item(&tr("Split Right"), "split-right"));
         layout.append_item(&item(&tr("Split Down"), "split-down"));
         layout.append_item(&item(&tr("Close Terminal"), "close"));
@@ -573,4 +599,15 @@ fn drop_paths(p: &Rc<Pane>, paths: Vec<PathBuf>) -> bool {
             tr("Cannot insert: a file name cannot be written safely for this shell")),
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auto_orientation_picks_the_longer_side() {
+        assert_eq!(auto_orientation(100, 50), gtk::Orientation::Horizontal);
+        assert_eq!(auto_orientation(50, 100), gtk::Orientation::Vertical);
+    }
 }
