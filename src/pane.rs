@@ -14,6 +14,7 @@ use crate::file_actions;
 use crate::i18n::{ntr, tr};
 use crate::log;
 use crate::panel::Panel;
+use crate::selection;
 use crate::shell::{self, Shell};
 use crate::settings;
 use crate::util::guard;
@@ -159,6 +160,7 @@ impl Pane {
         add("insert", |p| p.insert_selection());
         add("insert-var", |p| p.insert_variable());
         add("goto-tab-dir", |p| p.goto_tab_dir());
+        add("goto-selected-folder", |p| p.goto_selected_folder());
         add("split-right", |p| p.split(gtk::Orientation::Horizontal));
         add("split-down", |p| p.split(gtk::Orientation::Vertical));
         add("split-auto", |p| {
@@ -372,6 +374,20 @@ impl Pane {
         self.go_to(dir);
     }
 
+    fn goto_selected_folder(self: &Rc<Self>) {
+        let Some(panel) = self.panel.upgrade() else { return };
+        let Some(dir) = selection::folder_target(&panel.selected()) else {
+            self.term.widget().error_bell();
+            panel.message(tr("Select exactly one folder"));
+            return;
+        };
+        if !self.integrated.get() {
+            self.term.widget().error_bell();
+            return;
+        }
+        self.go_to(Some(dir));
+    }
+
     fn split(self: &Rc<Self>, orientation: gtk::Orientation) {
         if let Some(panel) = self.panel.upgrade() {
             panel.split(self, orientation);
@@ -419,7 +435,8 @@ impl Pane {
     }
 
     fn popup_menu(&self, x: f64, y: f64) {
-        let n = self.panel.upgrade().map_or(0, |p| p.selected().paths.len());
+        let sel = self.panel.upgrade().map(|p| p.selected()).unwrap_or_default();
+        let n = sel.paths.len();
         let enable = |name: &str, on: bool| {
             if let Some(a) = self.actions.lookup_action(name)
                 .and_then(|a| a.downcast::<gio::SimpleAction>().ok())
@@ -433,6 +450,7 @@ impl Pane {
         enable("insert-var", sel_var.is_some());
         enable("follow", self.integrated.get());
         enable("goto-tab-dir", self.integrated.get());
+        enable("goto-selected-folder", selection::folder_target(&sel).is_some());
         if let Some(a) = self.actions.lookup_action("follow") {
             a.change_state(&self.follows().to_variant());
         }
@@ -455,6 +473,7 @@ impl Pane {
         files.append_item(&item(&tr("Insert the {var} Variable").replace("{var}", sel_var.unwrap_or("SEL")), "insert-var"));
         let follow = gio::Menu::new();
         follow.append_item(&item(&tr("Go to Tab Folder"), "goto-tab-dir"));
+        follow.append_item(&item(&tr("Go to Selected Folder"), "goto-selected-folder"));
         follow.append(Some(&tr("Follow Nautilus Folder")), Some("shellman.follow"));
         let layout = gio::Menu::new();
         layout.append_item(&item(&tr("Split Right"), "split-right"));
@@ -477,7 +496,7 @@ impl Pane {
         pop.set_pointing_to(Some(&gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
         let actions = self.actions.clone();
         pop.connect_closed(move |p| guard("menu closed", (), || {
-            for name in ["copy", "insert", "insert-var", "follow", "goto-tab-dir"] {
+            for name in ["copy", "insert", "insert-var", "follow", "goto-tab-dir", "goto-selected-folder"] {
                 if let Some(a) = actions.lookup_action(name).and_downcast::<gio::SimpleAction>() {
                     a.set_enabled(true);
                 }

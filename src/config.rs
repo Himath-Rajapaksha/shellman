@@ -14,6 +14,7 @@ pub const ACTIONS: &[(&str, &str)] = &[
     ("split-auto", N_!("Split Automatically")),
     ("close", N_!("Close Terminal")),
     ("goto-tab-dir", N_!("Go to Tab Folder")),
+    ("goto-selected-folder", N_!("Go to Selected Folder")),
     ("focus-left", N_!("Go to Left Terminal")),
     ("focus-right", N_!("Go to Right Terminal")),
     ("focus-up", N_!("Go to Terminal Above")),
