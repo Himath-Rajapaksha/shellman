@@ -35,6 +35,7 @@ mod tests {
 
     #[test]
     fn follows_the_locale() {
+        std::env::remove_var("LANGUAGE");
         init();
         if unsafe { setlocale(LocaleCategory::LcAll, "C.UTF-8") }.is_some() {
             assert_eq!(tr("Copy"), "Copy");
