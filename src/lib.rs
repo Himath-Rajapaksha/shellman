@@ -13,6 +13,7 @@ pub mod prefs;
 pub mod selection;
 pub mod settings;
 pub mod shell;
+pub mod status;
 pub mod util;
 pub mod vte;
 

@@ -15,6 +15,7 @@ use crate::pane::Pane;
 use crate::selection;
 use crate::settings;
 use crate::prefs;
+use crate::status;
 use crate::util::{guard, type_name, walk};
 
 const DATA_KEY: &str = "shellman-panel";
@@ -44,6 +45,10 @@ pub struct Panel {
     win: gtk::Window,
     paned: gtk::Paned,
     stack: gtk::Stack,
+    body: gtk::Box,
+    status: gtk::Label,
+    status_message: RefCell<Option<(u64, String)>>,
+    status_seq: Cell<u64>,
     button: gtk::Widget,
     per_tab: bool,
     loc: OnceCell<Rc<LocationSource>>,
@@ -179,6 +184,7 @@ impl Panel {
             }
         }
         self.follow();
+        self.update_status();
         let weak = Rc::downgrade(self);
         glib::idle_add_local_once(move || {
             if let Some(p) = weak.upgrade() {
@@ -211,11 +217,12 @@ impl Panel {
         for p in self.all_panes() {
             p.update_size_request();
         }
+        self.body.set_visible(true);
         self.stack.set_visible(true);
         self.update_button();
         let h = self.paned.height();
         if h > 0 {
-            let min = self.stack.measure(gtk::Orientation::Vertical, -1).0;
+            let min = self.body.measure(gtk::Orientation::Vertical, -1).0;
             let th = HEIGHT.get().unwrap_or(min).clamp(min, (h - config::MIN_FILES_HEIGHT).max(min));
             self.paned.set_position(h - th);
         }
@@ -226,6 +233,7 @@ impl Panel {
         if focus.is_some_and(|f| f.is_ancestor(&self.stack)) {
             gtk::prelude::GtkWindowExt::set_focus(&self.win, None::<&gtk::Widget>);
         }
+        self.body.set_visible(false);
         self.stack.set_visible(false);
         self.update_button();
     }
@@ -242,6 +250,7 @@ impl Panel {
             }
         }
         self.set_shown(false);
+        self.body.set_visible(false);
         self.stack.set_visible(false);
         self.update_button();
     }
@@ -261,6 +270,7 @@ impl Panel {
         }
         self.update_button();
         self.follow();
+        self.update_status();
     }
 
     pub fn follow(&self) {
@@ -409,6 +419,36 @@ impl Panel {
 
     fn refresh_selection(&self) {
         selection::write_sel_file(&self.sel_file, &self.selected().paths);
+        self.update_status();
+    }
+
+    fn update_status(&self) {
+        if let Some((_, msg)) = self.status_message.borrow().as_ref() {
+            self.status.set_text(msg);
+            return;
+        }
+        let sel = self.selected();
+        let shortcut = settings::accels("insert").first()
+            .and_then(gtk::accelerator_parse)
+            .map(|(k, m)| gtk::accelerator_get_label(k, m).to_string());
+        self.status.set_text(&status::summary(
+            sel.paths.len(), sel.skipped, shortcut.as_deref()));
+    }
+
+    pub fn message(self: &Rc<Self>, text: String) {
+        let seq = self.status_seq.get() + 1;
+        self.status_seq.set(seq);
+        self.status.set_text(&text);
+        self.status_message.replace(Some((seq, text)));
+        let weak = Rc::downgrade(self);
+        glib::timeout_add_local_once(Duration::from_secs(3), move || {
+            if let Some(p) = weak.upgrade() {
+                if p.status_seq.get() == seq {
+                    p.status_message.replace(None);
+                    p.update_status();
+                }
+            }
+        });
     }
 
     fn stop(&self) {
@@ -427,12 +467,35 @@ fn build(win: &gtk::Window, paned: gtk::Paned, button: gtk::Widget) -> Rc<Panel>
     stack.set_vhomogeneous(false);
     stack.set_hhomogeneous(false);
     stack.set_visible(false);
-    paned.set_end_child(Some(&stack));
+
+    let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    body.set_visible(false);
+    stack.set_vexpand(true);
+    body.append(&stack);
+
+    let status = gtk::Label::new(None);
+    status.set_xalign(0.0);
+    status.set_hexpand(true);
+    status.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    status.set_focusable(false);
+    status.set_selectable(false);
+    status.set_margin_start(6);
+    status.set_margin_end(6);
+    status.set_margin_top(2);
+    status.set_margin_bottom(2);
+    status.add_css_class("dim-label");
+    body.append(&status);
+
+    paned.set_end_child(Some(&body));
 
     let panel = Rc::new(Panel {
         win: win.clone(),
         paned: paned.clone(),
         stack,
+        body,
+        status,
+        status_message: RefCell::new(None),
+        status_seq: Cell::new(0),
         button: button.clone(),
         per_tab: settings::with(|s| s.per_tab),
         loc: OnceCell::new(),
