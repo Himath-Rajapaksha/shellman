@@ -45,7 +45,15 @@ pub fn parse_uri_list(text: &str) -> Vec<PathBuf> {
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .filter_map(|line| gio::File::for_uri(line).path())
+        .filter_map(|line| {
+            gio::File::for_uri(line).path().or_else(|| {
+                // Nautilus also offers text/plain with absolute paths; GTK may
+                // deserialize the string target from that format instead of
+                // text/uri-list.
+                let path = PathBuf::from(line);
+                path.is_absolute().then_some(path)
+            })
+        })
         .filter(|path| path.is_absolute())
         .collect();
     dedupe(paths)
@@ -139,6 +147,15 @@ mod tests {
         assert_eq!(
             parse_uri_list("file:///tmp/a%20b"),
             vec![PathBuf::from("/tmp/a b")]
+        );
+    }
+
+    #[test]
+    fn parse_uri_list_accepts_plain_absolute_paths() {
+        let text = "/tmp/a\n/tmp/b with space\nrelative\nhttps://example.com/x\n";
+        assert_eq!(
+            parse_uri_list(text),
+            vec![PathBuf::from("/tmp/a"), PathBuf::from("/tmp/b with space")]
         );
     }
 
