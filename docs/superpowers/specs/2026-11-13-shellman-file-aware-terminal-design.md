@@ -143,21 +143,37 @@ be checked and overridden.
 
 Add `.github/workflows/ci.yml` running on pull requests and pushes to `main`:
 
-- `cargo fmt --all -- --check`
 - `cargo clippy --all-targets -- -D warnings`
 - `cargo test --all-targets`
 - `cargo build --release --locked`
+
+Do not gate on `cargo fmt --check`. Upstream is hand-formatted: `cargo fmt`
+currently reports 170 hunks across every source file, and a whole-repo reformat
+would make every future upstream rebase noisy. New modules are written in
+rustfmt style, but v0.2 does not enforce it repository-wide.
 
 Install the system dependencies on `ubuntu-24.04`:
 
 ```text
 libgtk-4-dev libadwaita-1-dev libvte-2.91-gtk4-dev
-libnautilus-extension-dev gettext
+libnautilus-extension-dev gettext locales
 ```
 
-If `cargo test` needs a display in CI, wrap it with `xvfb-run -a`. The existing
-unit tests should not need one, but the i18n test calls `setlocale` and the GTK
-types may initialize lazily; verify and add Xvfb only if required.
+Generate the French locale (`sudo locale-gen fr_FR.UTF-8`) so the French
+assertions in the i18n test actually run instead of being skipped.
+
+Install stable Rust explicitly (`dtolnay/rust-toolchain@stable` with the clippy
+component); Ubuntu 24.04's packaged rustc is too old for the C string literals
+already used by upstream.
+
+The unit tests do not create GTK widgets or open a display, so CI does not need
+Xvfb. The baseline suite runs headless on the development machine; add
+`xvfb-run -a` only if a future test starts creating widgets.
+
+Make `i18n::tests::follows_the_locale` deterministic: GNU gettext gives
+`LANGUAGE` priority over `LC_MESSAGES`, and some desktops set
+`LANGUAGE=en_US:en`, which masks the `fr_FR.UTF-8` locale the test sets. Remove
+`LANGUAGE` at the start of that test.
 
 Add a `make test` target that runs the same Rust checks, and keep
 `tests/pty.sh` as the manual shell-integration test.
@@ -359,7 +375,7 @@ folder.
 Nautilus right-click
   -> get_file_items(provider, GList<NautilusFileInfo>)
   -> Vec<PathBuf> via nautilus::file_path
-  -> FileActions::from_paths(paths)
+  -> FileActions::from_paths(paths, skipped)
   -> build MenuItem list
   -> return GList
 
@@ -383,12 +399,18 @@ struct FileActions {
     insert: Vec<PathBuf>,
     copy: Vec<PathBuf>,
 }
+
+impl FileActions {
+    fn from_paths(paths: Vec<PathBuf>, skipped: usize) -> FileActions { ... }
+}
 ```
 
-`from_paths` receives paths that the FFI layer has already confirmed are local.
-It computes `open_here` with `is_dir()`; `insert` and `copy` contain every input
-path. It does not check existence and does not create GTK objects. The FFI
-callback creates `MenuItem`s from the result.
+`from_paths` receives paths that the FFI layer has already confirmed are local,
+plus the number of selected items that had no local path. It computes
+`open_here` only when `skipped == 0`, exactly one path was selected, and that
+path is a directory; `insert` and `copy` contain every input path. It does not
+check existence and does not create GTK objects. The FFI callback creates
+`MenuItem`s from the result.
 
 ### 7.3 Panel and pane changes
 
@@ -427,8 +449,11 @@ the box, not just the stack, so the minimum height includes the status line.
 `split_at(pane, orientation, dir)`:
 
 - Same as the existing `split`, except the new pane spawns at
-  `dir.or_else(|| pane.shell_dir()).unwrap_or_else(start_dir)`.
-- When `dir` is `Some`, the new pane suppresses follow for its first prompt.
+  `dir.or_else(|| pane.shell_dir()).unwrap_or_else(start_dir)`, ignoring a
+  `dir` that no longer exists.
+- When `dir` is a valid directory, the new pane suppresses follow for its first
+  prompt. A vanished explicit directory falls back to another directory and
+  must not suppress follow.
 - The existing `split` becomes a wrapper with `dir = None`.
 
 `show_with_start(start)`:
@@ -469,8 +494,10 @@ Both use capture phase. Each returns `true` on drop if it recognized the format.
 Path extraction:
 
 - `gdk::FileList`: iterate `file_list.files()`, call `file.path()`.
-- `text/uri-list`: split on newlines, ignore `#` comments, parse each line with
-  `gio::File::for_uri`, call `.path()`.
+- `text/uri-list`: split on newlines, trim whitespace and a trailing `\r`,
+  ignore empty lines and `#` comments, parse each line with
+  `gio::File::for_uri`, call `.path()`, and keep only absolute paths so a
+  `x-special/gnome-copied-files` style header cannot become a relative path.
 
 Deduplicate paths while preserving order. Then call the same
 `pane.insert_paths(&paths)` used by the context menu. That function drops paths
@@ -481,17 +508,23 @@ that no longer exist and reports the skipped count.
 Add to `Panel`:
 
 ```rust
+body: gtk::Box,
 status: gtk::Label,
-status_message: RefCell<Option<String>>,
+status_message: RefCell<Option<(u64, String)>>,
+status_seq: Cell<u64>,
 ```
 
 `update_status()` builds the summary from `self.selected()` and the insert
-shortcut. `message(text)` stores a transient message, updates the label, and
-uses `glib::timeout_add_local_once(Duration::from_secs(3), ...)` to clear it and
-restore the summary. The timeout closure holds a weak reference to the panel.
+shortcut. `message(text)` stores a transient message with a monotonically
+increasing sequence number, updates the label, and uses
+`glib::timeout_add_local_once(Duration::from_secs(3), ...)` to clear it and
+restore the summary. The timeout closure holds a weak reference to the panel and
+only clears the message if its sequence number is still current, so a newer
+message is not wiped by an older timeout.
 
-Call `update_status()` from `refresh_selection()` and from the end of
-`tab_changed()`. `refresh_selection()` already runs on show and pane focus.
+Call `update_status()` from `refresh_selection()`, from the end of
+`tab_changed()`, and from `apply_settings()` so a remapped insert shortcut
+appears immediately. `refresh_selection()` already runs on show and pane focus.
 
 If live selection updates are implemented, connect to the active view's
 `selection-changed` signal. Keep the handler id in the panel so it can be
@@ -642,8 +675,8 @@ remaining allow list. Prefer fixing.
 
 ## 12. Acceptance criteria
 
-- `.github/workflows/ci.yml` exists and passes `fmt`, `clippy`, `test`, and
-  release build.
+- `.github/workflows/ci.yml` exists and passes `clippy`, `test`, and release
+  build.
 - `FORK.md` and the README fork banner exist; GPL notices are intact.
 - Right-click folder -> `Open Terminal Here` opens a new pane at that folder,
   including when the panel was hidden with existing panes.
