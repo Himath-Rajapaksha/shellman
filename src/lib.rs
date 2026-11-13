@@ -2,6 +2,7 @@
 
 pub mod colors;
 pub mod config;
+pub mod file_actions;
 pub mod i18n;
 pub mod icons;
 pub mod location;
