@@ -24,6 +24,7 @@ pub struct Pane {
     actions: gio::SimpleActionGroup,
     pid: Cell<Option<i32>>,
     spawning: Cell<bool>,
+    skip_follow: Cell<bool>,
     shell_dir: RefCell<Option<PathBuf>>,
     pending: RefCell<Option<PathBuf>>,
     follow_override: Cell<Option<bool>>,
@@ -63,6 +64,7 @@ impl Pane {
             actions: gio::SimpleActionGroup::new(),
             pid: Cell::new(None),
             spawning: Cell::new(false),
+            skip_follow: Cell::new(false),
             shell_dir: RefCell::new(None),
             pending: RefCell::new(None),
             follow_override: Cell::new(None),
@@ -236,6 +238,10 @@ impl Pane {
         self.follow_override.get().unwrap_or_else(|| settings::with(|s| s.follow))
     }
 
+    pub fn take_follow_skip(&self) -> bool {
+        self.pid.get().is_some() && self.skip_follow.replace(false)
+    }
+
     pub fn shell_dir(&self) -> Option<PathBuf> {
         self.shell_dir.borrow().clone()
     }
@@ -258,8 +264,15 @@ impl Pane {
     }
 
     pub fn spawn(self: &Rc<Self>, dir: &Path) {
+        self.spawn_at(dir, false);
+    }
+
+    pub fn spawn_at(self: &Rc<Self>, dir: &Path, suppress_follow: bool) {
         if self.pid.get().is_some() || self.spawning.get() {
             return;
+        }
+        if suppress_follow {
+            self.skip_follow.set(true);
         }
         let Some(panel) = self.panel.upgrade() else { return };
         self.spawning.set(true);
@@ -278,6 +291,9 @@ impl Pane {
             let Some(p) = weak.upgrade() else { return };
             p.spawning.set(false);
             p.pid.set(pid);
+            if pid.is_none() {
+                p.skip_follow.set(false);
+            }
             if let (Some(_), Some(panel)) = (pid, p.panel.upgrade()) {
                 panel.follow();
             }

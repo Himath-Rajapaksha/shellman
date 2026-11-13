@@ -1,5 +1,5 @@
 use std::cell::{Cell, OnceCell, RefCell};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
@@ -111,7 +111,13 @@ impl Panel {
         self.groups.borrow().iter().flat_map(|g| g.panes.iter().cloned()).collect()
     }
 
-    fn ensure_group(self: &Rc<Self>) -> usize {
+    pub fn active_pane(&self) -> Option<Rc<Pane>> {
+        let i = self.current_group()?;
+        let g = &self.groups.borrow()[i];
+        g.active.upgrade().or_else(|| g.panes.first().cloned())
+    }
+
+    fn ensure_group(self: &Rc<Self>, start: Option<PathBuf>) -> usize {
         if let Some(i) = self.current_group() {
             if !self.groups.borrow()[i].panes.is_empty() {
                 return i;
@@ -131,7 +137,9 @@ impl Panel {
             groups[i].panes.push(pane.clone());
             groups[i].active = Rc::downgrade(&pane);
         }
-        pane.spawn(&self.start_dir());
+        let start = start.filter(|d| d.is_dir());
+        let dir = start.clone().unwrap_or_else(|| self.start_dir());
+        pane.spawn_at(&dir, start.is_some());
         i
     }
 
@@ -150,8 +158,8 @@ impl Panel {
         }
     }
 
-    fn show_current_group(self: &Rc<Self>) {
-        let i = self.ensure_group();
+    fn show_current_group(self: &Rc<Self>, start: Option<PathBuf>) {
+        let i = self.ensure_group(start);
         let (holder, active) = {
             let g = &self.groups.borrow()[i];
             (g.holder.clone(), g.active.upgrade().or_else(|| g.panes.first().cloned()))
@@ -176,7 +184,7 @@ impl Panel {
                 None => settings::with(|s| s.show_in_new_tabs),
             };
             if show {
-                self.show_current_group();
+                self.show_current_group(None);
                 self.set_shown(true);
                 self.reveal();
             } else {
@@ -194,12 +202,16 @@ impl Panel {
     }
 
     fn show(self: &Rc<Self>) {
+        self.show_with_start(None);
+    }
+
+    fn show_with_start(self: &Rc<Self>, start: Option<PathBuf>) {
         let focus = gtk::prelude::GtkWindowExt::focus(&self.win);
         let in_panel = focus.as_ref().is_some_and(|f| f.is_ancestor(&self.stack));
         if !in_panel {
             self.prev_focus.set(focus.as_ref());
         }
-        self.show_current_group();
+        self.show_current_group(start);
         self.set_shown(true);
         self.reveal();
         self.refresh_selection();
@@ -210,6 +222,24 @@ impl Panel {
         });
         if let Some(p) = active {
             p.focus();
+        }
+    }
+
+    pub fn open_terminal_at(self: &Rc<Self>, dir: &Path) {
+        if !dir.is_dir() {
+            log!("open terminal here: {} is gone", dir.display());
+            self.win.error_bell();
+            self.message(tr("Folder no longer exists"));
+            return;
+        }
+        let dir = dir.to_path_buf();
+        if let Some(pane) = self.active_pane() {
+            if !self.shown() {
+                self.show();
+            }
+            self.split_at(&pane, gtk::Orientation::Horizontal, Some(dir));
+        } else {
+            self.show_with_start(Some(dir));
         }
     }
 
@@ -281,12 +311,20 @@ impl Panel {
             .collect();
         for (is_current, panes) in groups {
             for p in panes {
-                p.go_to(if is_current && p.follows() { dir.clone() } else { None });
+                let target = if is_current && p.follows() { dir.clone() } else { None };
+                if target.is_some() && p.take_follow_skip() {
+                    continue;
+                }
+                p.go_to(target);
             }
         }
     }
 
     pub fn split(self: &Rc<Self>, pane: &Rc<Pane>, orientation: gtk::Orientation) {
+        self.split_at(pane, orientation, None);
+    }
+
+    pub fn split_at(self: &Rc<Self>, pane: &Rc<Pane>, orientation: gtk::Orientation, dir: Option<PathBuf>) {
         let Some(gi) = self.group_of(pane) else { return };
         let old = pane.widget.clone();
         let Some(parent) = old.parent() else { return };
@@ -306,7 +344,12 @@ impl Panel {
             pn.set_position(size / 2);
         }
         self.groups.borrow_mut()[gi].panes.push(new.clone());
-        new.spawn(&pane.shell_dir().filter(|d| d.is_dir()).unwrap_or_else(|| self.start_dir()));
+        let explicit = dir.as_ref().is_some_and(|d| d.is_dir());
+        let target = dir.clone()
+            .filter(|d| d.is_dir())
+            .or_else(|| pane.shell_dir().filter(|d| d.is_dir()))
+            .unwrap_or_else(|| self.start_dir());
+        new.spawn_at(&target, explicit);
         new.focus();
     }
 
@@ -799,6 +842,20 @@ pub fn restyle_all() {
             }
         }
     }
+}
+
+fn active_panel() -> Option<Rc<Panel>> {
+    let win = app()?.active_window()?;
+    let panel = unsafe { win.data::<Rc<Panel>>(DATA_KEY) }?;
+    Some(unsafe { panel.as_ref() }.clone())
+}
+
+pub fn open_terminal_at(dir: &Path) {
+    let Some(panel) = active_panel() else {
+        log!("open terminal here: no terminal in the active window");
+        return;
+    };
+    panel.open_terminal_at(dir);
 }
 
 pub fn toggle_active() {
