@@ -8,7 +8,8 @@ use gtk::gio;
 use gtk::glib;
 
 use crate::config;
-use crate::i18n::tr;
+use crate::file_actions;
+use crate::i18n::{ntr, tr};
 use crate::location::LocationSource;
 use crate::log;
 use crate::pane::Pane;
@@ -16,6 +17,7 @@ use crate::selection;
 use crate::settings;
 use crate::prefs;
 use crate::status;
+use crate::util;
 use crate::util::{guard, type_name, walk};
 
 const DATA_KEY: &str = "shellman-panel";
@@ -240,6 +242,28 @@ impl Panel {
             self.split_at(&pane, gtk::Orientation::Horizontal, Some(dir));
         } else {
             self.show_with_start(Some(dir));
+        }
+    }
+
+    pub fn insert_paths(self: &Rc<Self>, paths: &[PathBuf], remote_skipped: usize) {
+        self.show();
+        let Some(pane) = self.active_pane() else { return };
+        pane.focus();
+        let Some(missing) = pane.insert_paths(paths) else {
+            self.message(tr("Cannot insert: a file name cannot be written safely for this shell"));
+            return;
+        };
+        let mut parts = Vec::new();
+        if remote_skipped > 0 {
+            parts.push(ntr("{n} remote item skipped", "{n} remote items skipped",
+                           remote_skipped as u32).replace("{n}", &remote_skipped.to_string()));
+        }
+        if missing > 0 {
+            parts.push(ntr("{n} missing item skipped", "{n} missing items skipped",
+                           missing as u32).replace("{n}", &missing.to_string()));
+        }
+        if !parts.is_empty() {
+            self.message(parts.join(" · "));
         }
     }
 
@@ -856,6 +880,26 @@ pub fn open_terminal_at(dir: &Path) {
         return;
     };
     panel.open_terminal_at(dir);
+}
+
+pub fn insert_paths(paths: &[PathBuf], remote_skipped: usize) {
+    let Some(panel) = active_panel() else {
+        log!("insert into terminal: no terminal in the active window");
+        return;
+    };
+    panel.insert_paths(paths, remote_skipped);
+}
+
+pub fn copy_paths(paths: &[PathBuf]) {
+    if !paths.is_empty() && !util::copy_text(&file_actions::path_text(paths)) {
+        log!("clipboard: cannot copy paths");
+    }
+}
+
+pub fn copy_uris(paths: &[PathBuf]) {
+    if !paths.is_empty() && !util::copy_text(&file_actions::uri_text(paths)) {
+        log!("clipboard: cannot copy URIs");
+    }
 }
 
 pub fn toggle_active() {

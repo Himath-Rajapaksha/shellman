@@ -398,6 +398,18 @@ mod tests {
     }
 
     #[test]
+    fn words_join_hostile_paths() {
+        let paths = vec![
+            PathBuf::from("/tmp/a b"),
+            PathBuf::from("/tmp/x';$(id)'"),
+        ];
+        assert_eq!(
+            words(Shell::Bash, &paths, true).as_deref(),
+            Some("'/tmp/a b' '/tmp/x'\\'';$(id)'\\''' ")
+        );
+    }
+
+    #[test]
     fn non_ascii_needs_utf8_locale() {
         let p = Path::new("/tmp/été");
         assert_eq!(quote(Shell::Bash, p, true).as_deref(), Some("'/tmp/été'"));

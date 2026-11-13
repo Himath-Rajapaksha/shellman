@@ -27,6 +27,7 @@ pub struct Pane {
     skip_follow: Cell<bool>,
     shell_dir: RefCell<Option<PathBuf>>,
     pending: RefCell<Option<PathBuf>>,
+    pending_feed: RefCell<String>,
     follow_override: Cell<Option<bool>>,
     shell: Shell,
     integrated: Cell<bool>,
@@ -67,6 +68,7 @@ impl Pane {
             skip_follow: Cell::new(false),
             shell_dir: RefCell::new(None),
             pending: RefCell::new(None),
+            pending_feed: RefCell::new(String::new()),
             follow_override: Cell::new(None),
             shell: Shell::of(&user_shell()),
             integrated: Cell::new(false),
@@ -293,8 +295,13 @@ impl Pane {
             p.pid.set(pid);
             if pid.is_none() {
                 p.skip_follow.set(false);
+                return;
             }
-            if let (Some(_), Some(panel)) = (pid, p.panel.upgrade()) {
+            let text = std::mem::take(&mut *p.pending_feed.borrow_mut());
+            if !text.is_empty() {
+                p.term.feed(&text);
+            }
+            if let Some(panel) = p.panel.upgrade() {
                 panel.follow();
             }
         });
@@ -358,30 +365,44 @@ impl Pane {
         }
     }
 
-    fn insert_variable(&self) {
+    fn insert_variable(self: &Rc<Self>) {
         match self.shell.sel_variable() {
             Some(v) => self.term.feed(&format!("{v} ")),
             None => self.insert_selection(),
         }
     }
 
-    fn insert_selection(&self) {
+    /// Inserts quoted paths, dropping paths that no longer exist.
+    /// Returns the number of skipped paths, or None if quoting was refused.
+    pub fn insert_paths(&self, paths: &[PathBuf]) -> Option<usize> {
+        let (present, missing) = crate::file_actions::existing(paths);
+        if present.is_empty() {
+            self.term.widget().error_bell();
+            return Some(missing);
+        }
+        let Some(text) = shell::words(self.shell, &present, shell::utf8_locale()) else {
+            log!("insertion refused: a file name cannot be written safely for this shell");
+            self.term.widget().error_bell();
+            return None;
+        };
+        if self.pid.get().is_some() {
+            self.term.feed(&text);
+        } else {
+            // `Insert into Terminal` can create this pane and insert immediately;
+            // `feed` writes to the PTY, so it must wait for the spawn callback.
+            self.pending_feed.borrow_mut().push_str(&text);
+        }
+        Some(missing)
+    }
+
+    fn insert_selection(self: &Rc<Self>) {
         let Some(panel) = self.panel.upgrade() else { return };
         let sel = panel.selected();
-        if sel.paths.is_empty() || sel.skipped > 0 {
-            if sel.skipped > 0 {
-                log!("insertion refused: {} selected item(s) have no local path", sel.skipped);
-            }
+        if sel.paths.is_empty() && sel.skipped == 0 {
             self.term.widget().error_bell();
             return;
         }
-        match shell::words(self.shell, &sel.paths, shell::utf8_locale()) {
-            Some(text) => self.term.feed(&text),
-            None => {
-                log!("insertion refused: a file name cannot be written safely for this shell");
-                self.term.widget().error_bell();
-            }
-        }
+        panel.insert_paths(&sel.paths, sel.skipped);
     }
 
     fn popup_menu(&self, x: f64, y: f64) {
@@ -456,6 +477,7 @@ impl Pane {
 
     pub fn stop(&self) {
         self.pending.replace(None);
+        self.pending_feed.borrow_mut().clear();
         let _ = std::fs::remove_file(&self.cd_file);
         let _ = std::fs::remove_file(&self.state_file);
         let mut c = self.term.widget().first_child();
