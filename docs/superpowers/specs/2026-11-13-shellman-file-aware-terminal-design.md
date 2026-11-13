@@ -556,8 +556,9 @@ The FFI path filter (local vs remote) is manual-tested because it needs
 
 ### Manual test matrix
 
-Run at least on the Nautilus version available on the development machine.
-Record the version and distribution in the PR.
+Run at least on the Nautilus version available on the development machine. The
+human can test on this machine only, so record its distribution and
+`nautilus --version` in the PR and do not claim broader coverage.
 
 Cases:
 
@@ -628,20 +629,16 @@ remaining allow list. Prefer fixing.
 4. Merge to `main`; tag a source-only `v0.2.0-fork` if desired.
 5. Only after the fork name/app ID decision: packaging and binary release.
 
-## 11. Open questions for the human
+## 11. Resolved with the human (2026-11-13)
 
-1. **Fork name and app identity.** Needed only before binary packages. If you
-   want a name now, it changes `Cargo.toml`, metainfo, About, icon, package
-   names, and `.so` name. If not, v0.2 stays source-only.
-2. **`Open Terminal Here` behavior.** I chose "always create a new pane." The
-   alternative is "reuse the current pane when the panel is already open." The
-   choice affects the panel/split refactor and the UX.
-3. **Status line visibility.** I chose "always visible while the panel is shown."
-   The alternative is "only visible when something is selected." The choice
-   affects layout height and the empty state.
-4. **Manual test coverage.** Which Nautilus versions/distributions can you test
-   on? This determines whether v0.2 can claim 46/48/50/51 coverage or only the
-   development machine.
+1. **Fork identity:** source-only for v0.2. Keep the `shellman` name, app ID, and
+   package names; no binary packages. Choose a distinct name before the first
+   binary release.
+2. **`Open Terminal Here`:** always create a new pane. Never reuse or re-direct
+   an existing shell.
+3. **Status line:** always visible while the panel is shown.
+4. **Manual testing:** development machine only. Record its distribution and
+   `nautilus --version` in the PR; do not claim broader Nautilus coverage.
 
 ## 12. Acceptance criteria
 
